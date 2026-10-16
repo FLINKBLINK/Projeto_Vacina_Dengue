@@ -156,8 +156,8 @@ try:
     else:
         st.info("Não há municípios suficientes com variação nos dois eixos para desenhar esta correlação.")
 
-    p_plot = tabela_corr[tabela_corr["p_value"].notna()][["analise", "p_value", "p_artigo"]].melt(
-        id_vars="analise", var_name="origem", value_name="p_value")
+    p_plot = tabela_corr[["analise", "p_value", "p_artigo"]].melt(
+        id_vars="analise", var_name="origem", value_name="p_value").dropna(subset=["p_value"])
     if not p_plot.empty:
         p_plot["origem"] = p_plot["origem"].map({"p_value": "Calculado com as bases atuais", "p_artigo": "Publicado no artigo"})
         fig_p = px.bar(p_plot, x="analise", y="p_value", color="origem", barmode="group",

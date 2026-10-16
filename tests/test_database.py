@@ -30,11 +30,9 @@ def test_sqlite_importa_as_fontes_e_permite_consultas(tmp_path):
     assert not consultar_vacinacao_categoria("faixaetaria", caminho).empty
 
 
-def test_categoria_invalida_e_rejeitada(tmp_path):
-    caminho = tmp_path / "dengue_test.db"
-    recriar_banco(caminho)
+def test_categoria_invalida_e_rejeitada():
     try:
-        consultar_vacinacao_categoria("idade", caminho)
+        consultar_vacinacao_categoria("idade")
     except ValueError as exc:
         assert "categoria" in str(exc)
     else:

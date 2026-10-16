@@ -45,7 +45,7 @@ def test_buscar_conjuntos_filtra_operacoes_do_swagger(mock_get_json):
     resultado = buscar_conjuntos("arboviroses dengue")
     assert len(resultado) == 1
     assert resultado[0]["id"] == "get_arboviroses_dengue"
-    assert resultado[0]["url"].endswith("/v1/arboviroses/dengue")
+    assert resultado[0]["url"].endswith("/arboviroses/dengue")
 
 
 def test_resumir_recurso_padroniza_metadados():

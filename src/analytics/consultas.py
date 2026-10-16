@@ -86,18 +86,72 @@ def carregar_vacinacao() -> dict[str, pd.DataFrame]:
     xls = pd.ExcelFile(caminho)
     return {aba: pd.read_excel(xls, sheet_name=aba) for aba in xls.sheet_names if aba.strip().lower() != "planilha1"}
 
+def _mes_canonico(nome_coluna) -> str | None:
+    """Reconhece nomes de meses em português, completos ou abreviados."""
+    nome = normalizar_texto(nome_coluna).rstrip(".")
+    aliases = {
+        "JAN": "jan", "JANEIRO": "jan",
+        "FEV": "fev", "FEVEREIRO": "fev",
+        "MAR": "mar", "MARCO": "mar",
+        "ABR": "abr", "ABRIL": "abr",
+        "MAI": "mai", "MAIO": "mai",
+        "JUN": "jun", "JUNHO": "jun",
+        "JUL": "jul", "JULHO": "jul",
+        "AGO": "ago", "AGOSTO": "ago",
+        "SET": "set", "SETEMBRO": "set",
+        "OUT": "out", "OUTUBRO": "out",
+        "NOV": "nov", "NOVEMBRO": "nov",
+        "DEZ": "dez", "DEZEMBRO": "dez",
+    }
+    # Aceita cabeçalhos como "Jan/2024" ou "Janeiro 2024", se houver ano no título.
+    partes = nome.replace("/", " ").replace("-", " ").split()
+    if partes and partes[-1].isdigit() and len(partes[-1]) in (2, 4):
+        nome = " ".join(partes[:-1])
+    return aliases.get(nome)
+
+
 def preparar_vacinacao_mensal(abas: dict[str, pd.DataFrame], ano: int) -> pd.DataFrame:
+    """Converte a aba anual em formato longo, reconhecendo meses completos e abreviados."""
+    colunas_saida = ["municipio", "municipio_original", "mes", "doses", "ano"]
     chave = f"{ano}_ano"
     if chave not in abas:
-        return pd.DataFrame(columns=["municipio", "mes", "doses", "ano"])
+        return pd.DataFrame(columns=colunas_saida)
+
     df = abas[chave].copy()
+    if df.empty or len(df.columns) == 0:
+        return pd.DataFrame(columns=colunas_saida)
+
     df = df.rename(columns={df.columns[0]: "municipio_original"})
     df["municipio"] = df["municipio_original"].map(normalizar_municipio)
-    meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-    colunas = [c for c in df.columns if str(c).strip().lower() in meses]
-    if not colunas:
-        return pd.DataFrame(columns=["municipio", "mes", "doses", "ano"])
-    longa = df.melt(id_vars=["municipio", "municipio_original"], value_vars=colunas, var_name="mes", value_name="doses")
+
+    mapa_meses = {
+        coluna: _mes_canonico(coluna)
+        for coluna in df.columns
+        if coluna not in ("municipio_original", "municipio")
+        and _mes_canonico(coluna) is not None
+    }
+    if not mapa_meses:
+        return pd.DataFrame(columns=colunas_saida)
+
+    canonicos = list(mapa_meses.values())
+    duplicados = sorted({mes for mes in canonicos if canonicos.count(mes) > 1})
+    if duplicados:
+        raise ValueError(
+            "Há mais de uma coluna para o(s) mês(es): "
+            + ", ".join(duplicados)
+            + ". Verifique os cabeçalhos da aba "
+            + chave
+            + " para evitar somar doses duplicadas."
+        )
+
+    df = df.rename(columns=mapa_meses)
+    colunas_mes = list(mapa_meses.values())
+    longa = df.melt(
+        id_vars=["municipio", "municipio_original"],
+        value_vars=colunas_mes,
+        var_name="mes",
+        value_name="doses",
+    )
     longa["doses"] = pd.to_numeric(longa["doses"], errors="coerce")
     longa["ano"] = ano
     return longa

@@ -132,7 +132,9 @@ def diagnosticar(ano: int, max_pages: int, page_size: int, pausa: float) -> dict
     sem_codigo = 0
     ultima_pagina_cheia = False
     for pagina in range(max_pages):
-        offset = pagina * page_size
+        # Nesta API, offset representa o número da página (0, 1, 2...),
+        # não a quantidade de registros a pular. Ver Swagger do endpoint SINAN.
+        offset = pagina
         response = session.get(
             f"{BASE}{ROTA}",
             params={"nu_ano": str(ano), "limit": page_size, "offset": offset},

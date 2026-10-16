@@ -1,7 +1,7 @@
-"""Inspeciona o esquema real das APIs oficiais sem imprimir valores de registros.
+"""Inspeciona o esquema real das APIs oficiais sem imprimir dados pessoais.
 
-O relatório mostra apenas nomes de campos, tipos JSON e contagem de amostras.
-Não grava dados pessoais nem substitui o ETL principal.
+O relatório mostra campos/tipos e apenas valores de identificadores geográficos
+ou classificações públicas da vacina, para validar filtros e códigos de imunizante.
 """
 from __future__ import annotations
 
@@ -16,6 +16,12 @@ HEADERS = {
     "Accept": "application/json",
 }
 TIMEOUT = 30
+CAMPOS_PUBLICOS = {
+    "id_municip", "municipio", "nu_ano", "ano", "cod_mun",
+    "nome_municipio_estabelecimento", "nome_municipio_paciente",
+    "codigo_municipio_estabelecimento", "codigo_municipio_paciente",
+    "codigo_vacina", "descricao_vacina", "codigo_dose_vacina",
+}
 
 
 def extrair_lista(payload: Any) -> list[dict[str, Any]]:
@@ -66,14 +72,20 @@ def inspecionar(nome: str, rota: str, params: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"{nome}: resposta não é JSON válido.") from exc
     rows = extrair_lista(payload)
     tipos: dict[str, set[str]] = {}
+    identificadores: dict[str, set[str]] = {}
     for row in rows:
         for key, value in row.items():
             tipos.setdefault(str(key), set()).add(tipo_json(value))
+            if str(key).lower() in CAMPOS_PUBLICOS and value not in (None, ""):
+                identificadores.setdefault(str(key), set()).add(str(value))
     resultado["registros_amostra"] = len(rows)
     resultado["campos"] = [
         {"nome": key, "tipos_observados": sorted(values)}
         for key, values in sorted(tipos.items())
     ]
+    resultado["identificadores_publicos_observados"] = {
+        key: sorted(values)[:10] for key, values in sorted(identificadores.items())
+    }
     resultado["amostra_vazia"] = len(rows) == 0
     return resultado
 

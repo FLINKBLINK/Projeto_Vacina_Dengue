@@ -22,7 +22,7 @@ def test_assinatura_e_deterministica_sem_expor_linha():
     assert len(diagnostico.assinatura_linha(row)) == 64
 
 
-def test_diagnostico_consulta_cada_municipio_e_detecta_repeticao(monkeypatch):
+def test_diagnostico_avanca_offset_pelo_tamanho_da_pagina(monkeypatch):
     chamadas = []
 
     class Response:
@@ -44,15 +44,24 @@ def test_diagnostico_consulta_cada_municipio_e_detecta_repeticao(monkeypatch):
             code = params["id_municip"]
             offset = params["offset"]
             if offset == 0:
-                rows = [{"id_municip": code, "id_mn_resi": "354340"}]
+                rows = [
+                    {"id_municip": code, "id_mn_resi": "354340", "registro": 1},
+                    {"id_municip": code, "id_mn_resi": "354340", "registro": 2},
+                ]
+            elif offset == 2:
+                rows = [{"id_municip": code, "id_mn_resi": "354340", "registro": 3}]
             else:
                 rows = []
             return Response(rows)
 
     monkeypatch.setattr(diagnostico.requests, "Session", Session)
-    result = diagnostico.diagnosticar(2024, max_pages=2, page_size=2, pausa=0)
-    assert len(chamadas) == len(diagnostico.MUNICIPIOS)
-    assert chamadas[0]["offset"] == 0
+    result = diagnostico.diagnosticar(2024, max_pages=3, page_size=2, pausa=0)
+
+    assert len(chamadas) == 20
+    assert [call["offset"] for call in chamadas[:2]] == [0, 2]
     assert chamadas[0]["id_municip"] == "350560"
-    assert result["resultados_por_municipio_notificador"]["Barrinha"]["registros_lidos"] == 1
-    assert result["resultados_por_municipio_notificador"]["Barrinha"]["varredura_completa"] is True
+    barrinha = result["resultados_por_municipio_notificador"]["Barrinha"]
+    assert barrinha["registros_lidos"] == 3
+    assert barrinha["registros_distintos_por_hash"] == 3
+    assert barrinha["registros_repetidos_entre_paginas_ou_na_consulta"] == 0
+    assert barrinha["varredura_completa"] is True

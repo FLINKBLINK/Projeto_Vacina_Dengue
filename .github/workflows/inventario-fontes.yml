@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pytest
       - name: Executar testes da camada de fontes
-        run: python -m pytest tests/test_fontes_oficiais.py tests/test_validar_respostas_api.py -q
+        run: python -m pytest tests/test_fontes_oficiais.py tests/test_validar_respostas_api.py tests/test_etl_oficial.py -q
       - name: Consultar catálogo oficial
         run: |
           mkdir -p artifacts

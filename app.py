@@ -90,7 +90,7 @@ if not vac.empty and not casos_f.empty:
         b.metric("p-valor", f"{resultado['p_value']:.3f}")
         c.metric("n de municípios", str(resultado["n"]))
         st.caption(resultado["interpretacao"])
-        st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", trendline="ols", labels={"doses": "Doses registradas (soma das abas disponíveis)", "registros": "Registros SINAN no filtro"}, title="Doses registradas versus registros SINAN"), use_container_width=True)
+        st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", labels={"doses": "Doses registradas (soma das abas disponíveis)", "registros": "Registros SINAN no filtro"}, title="Doses registradas versus registros SINAN"), use_container_width=True)
     else:
         st.info("A correlação exige pelo menos três municípios com valores válidos e variação nas duas variáveis.")
 else:

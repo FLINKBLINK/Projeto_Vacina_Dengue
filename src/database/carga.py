@@ -66,6 +66,7 @@ def recriar_banco(db_path: str | Path | None = None) -> dict[str, int]:
     inicializar_esquema(caminho)
     populacao = carregar_populacao()
     casos = _formatar_datas_sinan(carregar_casos())
+    casos["fonte"] = casos["arquivo_ano"].map({2023: "SINAN_2023.xlsx", 2024: "SINAN_2024.xlsx", 2025: "SINAN_2025.xlsx"})
     abas = carregar_vacinacao()
 
     mensal = pd.concat(
@@ -90,7 +91,7 @@ def recriar_banco(db_path: str | Path | None = None) -> dict[str, int]:
 
     conjuntos = {
         "populacao_municipio": populacao[["municipio", "municipio_original", "populacao"]],
-        "registros_sinan": casos[["municipio", "municipio_original", "data_notificacao", "idade_anos", "sexo", "arquivo_ano", "ano_data", "diverge_ano_arquivo"]].copy(),
+        "registros_sinan": casos[["municipio", "municipio_original", "data_notificacao", "idade_anos", "sexo", "arquivo_ano", "ano_data", "diverge_ano_arquivo", "fonte"]].copy(),
         "vacinacao_mensal": mensal[["municipio", "municipio_original", "ano", "mes", "mes_numero", "doses"]].copy() if not mensal.empty else pd.DataFrame(columns=["municipio", "municipio_original", "ano", "mes", "mes_numero", "doses"]),
         "vacinacao_sexo": sexo[["municipio", "municipio_original", "ano", "sexo_categoria", "doses"]].copy() if not sexo.empty else pd.DataFrame(columns=["municipio", "municipio_original", "ano", "sexo_categoria", "doses"]),
         "vacinacao_faixa_etaria": faixa[["municipio", "municipio_original", "ano", "faixa_etaria", "doses"]].copy() if not faixa.empty else pd.DataFrame(columns=["municipio", "municipio_original", "ano", "faixa_etaria", "doses"]),

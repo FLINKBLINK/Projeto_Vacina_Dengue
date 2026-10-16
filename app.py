@@ -78,11 +78,16 @@ except Exception as exc:
     st.warning(f"A parte de vacinação não pôde ser calculada: {exc}")
 
 st.subheader("Correlação exploratória entre vacinação e registros")
-st.write("A correlação de Pearson mede associação linear; não demonstra causalidade nem eficácia individual da vacina.")
-if not vac.empty and not casos_f.empty:
-    total_vac = vac.groupby("municipio", as_index=False)["doses"].sum(min_count=1)
-    total_casos = casos_f.groupby("municipio", as_index=False).size().rename(columns={"size": "registros"})
-    corr_df = total_vac.merge(total_casos, on="municipio", how="inner").dropna(subset=["doses", "registros"])
+st.write("Selecione separadamente o ano das doses e o ano dos registros. Esta visualização é uma exploração transversal entre municípios; não reproduz, por si só, as três correlações de variação temporal do artigo.")
+if not vac.empty and not casos_brutos.empty:
+    anos_vac = sorted(int(a) for a in vac["ano"].dropna().unique())
+    anos_casos_corr = sorted(int(a) for a in casos_brutos["ano_data"].dropna().unique())
+    csel1, csel2 = st.columns(2)
+    ano_doses_corr = csel1.selectbox("Ano das doses", anos_vac, index=0 if 2024 in anos_vac else len(anos_vac)-1)
+    ano_casos_corr = csel2.selectbox("Ano da data de notificação", anos_casos_corr, index=0 if 2024 in anos_casos_corr else len(anos_casos_corr)-1)
+    doses_corr = vac[vac["ano"] == ano_doses_corr].groupby("municipio", as_index=False)["doses"].sum(min_count=1)
+    casos_corr = casos_brutos[(casos_brutos["ano_data"] == ano_casos_corr) & casos_brutos["municipio"].isin(municipios_filtro)].groupby("municipio", as_index=False).size().rename(columns={"size": "registros"})
+    corr_df = doses_corr.merge(casos_corr, on="municipio", how="inner").dropna(subset=["doses", "registros"])
     if len(corr_df) >= 3 and corr_df["doses"].nunique() > 1 and corr_df["registros"].nunique() > 1:
         resultado = correlacao_pearson(corr_df["doses"], corr_df["registros"])
         a, b, c = st.columns(3)
@@ -90,7 +95,7 @@ if not vac.empty and not casos_f.empty:
         b.metric("p-valor", f"{resultado['p_value']:.3f}")
         c.metric("n de municípios", str(resultado["n"]))
         st.caption(resultado["interpretacao"])
-        st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", labels={"doses": "Doses registradas (soma das abas disponíveis)", "registros": "Registros SINAN no filtro"}, title="Doses registradas versus registros SINAN"), use_container_width=True)
+        st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", labels={"doses": f"Doses registradas em {ano_doses_corr}", "registros": f"Registros SINAN em {ano_casos_corr}"}, title="Doses registradas versus registros SINAN por município"), use_container_width=True)
     else:
         st.info("A correlação exige pelo menos três municípios com valores válidos e variação nas duas variáveis.")
 else:

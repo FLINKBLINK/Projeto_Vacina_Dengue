@@ -11,6 +11,20 @@ Fontes documentadas:
 
 Swagger oficial: https://apidadosabertos.saude.gov.br/static/swagger.json
 
+## Inspeção real de esquema
+
+O script `scripts/inspecionar_esquema_api.py` consulta pequenas amostras e imprime somente nomes de campos, tipos JSON e contagens, nunca valores de registros.
+
+Validação executada em 16/10/2026:
+- SINAN dengue, ano 2024 sem filtro municipal: HTTP 200 e 5 registros de amostra.
+- SINAN dengue, ano 2024 com `id_municip=354340` (código municipal de seis dígitos usado na consulta): HTTP 200 e 5 registros de amostra.
+- A mesma consulta com `id_municip=35434` e `id_municip=3543402` retornou zero registros. O formato de seis dígitos deve ser mantido e a contagem real por município ainda deve ser auditada na extração completa.
+- Campos SINAN relevantes observados: `id_municip`, `municipio`, `nu_ano`, `dt_notific`, `id_mn_resi` e `classi_fin`. A API expõe muitos outros campos clínicos/epidemiológicos, preservados em JSON bruto.
+- População residente: HTTP 200, com campos `ano`, `cod_mun`, `idade`, `pop` e `sexo`. Os registros vêm desagregados por sexo e idade; não se deve tratar cada linha como população total municipal.
+- PNI 2025: HTTP 200; a amostra contém campos `codigo_vacina`, `codigo_dose_vacina`, `data_vacina`, `codigo_municipio_estabelecimento`, `codigo_municipio_paciente` e descrições de vacina/fabricante, entre outros. A amostra inicial não valida por si só qual código identifica a vacina contra dengue.
+
+O workflow [Inspecionar esquema das APIs oficiais](https://github.com/FLINKBLINK/Projeto_Vacina_Dengue/actions/workflows/inspecionar-esquema-api.yml) executa essa inspeção sem salvar dados de pacientes no log.
+
 ## Executar
 
 Teste curto, limitado a uma página por consulta:

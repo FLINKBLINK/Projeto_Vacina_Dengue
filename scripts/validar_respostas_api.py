@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-API_BASE = "https://apidadosabertos.saude.gov.br/v1"
+API_BASE = "https://apidadosabertos.saude.gov.br"
 SWAGGER_URL = "https://apidadosabertos.saude.gov.br/static/swagger.json"
 TIMEOUT_SECONDS = 60
 USER_AGENT = "Projeto-Vacina-Dengue/1.0 (validacao-de-fontes-publicas)"

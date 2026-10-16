@@ -122,7 +122,7 @@ def gerar_inventario() -> dict[str, Any]:
     consultas = {
         "sinan_dengue": "arboviroses dengue",
         "pni_vacinacao": "vacinacao doses aplicadas pni",
-        "populacao": "populacao residente municipio",
+        "populacao": "residente",
     }
     inventario: dict[str, Any] = {
         "extraido_em_utc": datetime.now(timezone.utc).isoformat(),

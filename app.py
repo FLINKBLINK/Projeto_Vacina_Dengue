@@ -2,7 +2,10 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes, carregar_casos, carregar_populacao, carregar_vacinacao, preparar_vacinacao_mensal, preparar_vacinacao_categoria
+from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes
+from src.database.carga import garantir_banco_atualizado
+from src.database.consultas_db import consultar_casos, consultar_populacao, consultar_vacinacao_mensal, consultar_vacinacao_categoria
+from src.database.conexao import DB_PATH
 from src.analytics.indicadores import calcular_doses_por_100_habitantes
 from src.analytics.estatisticas import correlacao_pearson
 
@@ -22,12 +25,21 @@ if ausentes:
     st.info("O aplicativo não inventa valores nem cria resultados quando as planilhas não estão disponíveis.")
     st.stop()
 try:
-    populacao = carregar_populacao()
-    casos_brutos = carregar_casos()
-    abas_vac = carregar_vacinacao()
+    with st.spinner("Verificando o banco SQLite e preparando as bases..."):
+        carga_realizada = garantir_banco_atualizado()
+    populacao = consultar_populacao()
+    casos_brutos = consultar_casos()
+    vac_banco = consultar_vacinacao_mensal()
 except Exception as exc:
-    st.error(f"Não foi possível carregar as bases: {exc}")
+    st.error(f"Não foi possível preparar ou consultar o banco SQLite: {exc}")
+    st.exception(exc)
     st.stop()
+
+with st.sidebar:
+    st.caption(f"Banco SQLite: {DB_PATH.name}")
+    st.caption("As consultas do dashboard são realizadas no banco local do ambiente.")
+if carga_realizada:
+    st.success("Banco SQLite criado/atualizado a partir das planilhas de origem.")
 
 municipios = sorted(populacao["municipio"].dropna().unique().tolist())
 municipios_selecionados = municipios if incluir_brodowski else [m for m in MUNICIPIOS_ANALISE if m in municipios and m != "Brodowski"]
@@ -64,8 +76,7 @@ st.subheader("Vacinação")
 st.caption("A aba anual de 2025 disponível contém janeiro a abril; maio não consta na planilha auditada.")
 vac = pd.DataFrame()
 try:
-    vac = pd.concat([preparar_vacinacao_mensal(abas_vac, 2024), preparar_vacinacao_mensal(abas_vac, 2025)], ignore_index=True)
-    vac = vac[vac["municipio"].isin(municipios_filtro)]
+    vac = vac_banco[vac_banco["municipio"].isin(municipios_filtro)].copy()
     if not vac.empty:
         resumo_vac = vac.groupby(["ano", "municipio"], as_index=False)["doses"].sum(min_count=1)
         st.plotly_chart(px.bar(resumo_vac, x="municipio", y="doses", color="ano", barmode="group", labels={"municipio": "Município", "doses": "Doses registradas", "ano": "Ano"}, title="Doses registradas por município e ano"), use_container_width=True)
@@ -74,8 +85,7 @@ try:
         st.caption("Doses por 100 habitantes é um indicador descritivo, não cobertura vacinal oficial nem percentual de pessoas únicas vacinadas.")
         st.dataframe(indicador, use_container_width=True, hide_index=True)
         for categoria, titulo in [("sexo", "Doses registradas por sexo"), ("faixaetaria", "Doses registradas por faixa etária")]:
-            partes_categoria = [preparar_vacinacao_categoria(abas_vac, ano, categoria) for ano in (2024, 2025)]
-            dados_categoria = pd.concat(partes_categoria, ignore_index=True)
+            dados_categoria = consultar_vacinacao_categoria(categoria)
             dados_categoria = dados_categoria[dados_categoria["municipio"].isin(municipios_filtro)]
             if not dados_categoria.empty:
                 resumo_categoria = dados_categoria.groupby(["ano", "categoria"], as_index=False)["doses"].sum(min_count=1)

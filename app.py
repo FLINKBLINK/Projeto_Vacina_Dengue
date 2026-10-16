@@ -102,14 +102,33 @@ try:
         indicador["doses_por_100_hab"] = calcular_doses_por_100_habitantes(indicador["doses"], indicador["populacao"])
         st.caption("Doses por 100 habitantes é um indicador descritivo, não cobertura vacinal oficial nem percentual de pessoas únicas vacinadas.")
         st.dataframe(indicador, use_container_width=True, hide_index=True)
-        for categoria, titulo in [("sexo", "Doses registradas por sexo"), ("faixaetaria", "Doses registradas por faixa etária")]:
-            dados_categoria = consultar_vacinacao_categoria(categoria)
-            dados_categoria = dados_categoria[dados_categoria["municipio"].isin(municipios_filtro)]
-            if not dados_categoria.empty:
-                resumo_categoria = dados_categoria.groupby(["ano", "categoria"], as_index=False)["doses"].sum(min_count=1)
-                st.plotly_chart(px.bar(resumo_categoria, x="categoria", y="doses", color="ano", barmode="group",
-                                       labels={"categoria": "Grupo", "doses": "Doses registradas", "ano": "Ano"},
-                                       title=titulo), use_container_width=True)
+        resumo_taxa = indicador.groupby("ano", as_index=False)["doses_por_100_hab"].mean()
+        resumo_taxa = resumo_taxa.rename(columns={"doses_por_100_hab": "média municipal de doses por 100 habitantes"})
+        st.markdown("**Média municipal descritiva de doses por 100 habitantes**")
+        st.dataframe(resumo_taxa, use_container_width=True, hide_index=True)
+
+        dados_sexo = consultar_vacinacao_categoria("sexo")
+        dados_sexo = dados_sexo[dados_sexo["municipio"].isin(municipios_filtro)].copy()
+        if not dados_sexo.empty:
+            resumo_sexo = dados_sexo.groupby(["ano", "categoria"], as_index=False)["doses"].sum(min_count=1)
+            resumo_sexo["percentual_das_doses_no_ano"] = (
+                resumo_sexo["doses"] / resumo_sexo.groupby("ano")["doses"].transform("sum") * 100
+            )
+            st.markdown("**Distribuição das doses por sexo**")
+            st.dataframe(resumo_sexo, use_container_width=True, hide_index=True)
+            st.plotly_chart(px.bar(resumo_sexo, x="categoria", y="percentual_das_doses_no_ano", color="ano",
+                                   barmode="group", labels={"categoria": "Sexo", "percentual_das_doses_no_ano": "% das doses", "ano": "Ano"},
+                                   title="Proporção das doses registradas por sexo"), use_container_width=True)
+
+        dados_idade = consultar_vacinacao_categoria("faixaetaria")
+        dados_idade = dados_idade[dados_idade["municipio"].isin(municipios_filtro)].copy()
+        if not dados_idade.empty:
+            resumo_idade_mun = dados_idade.groupby(["ano", "municipio", "categoria"], as_index=False)["doses"].sum(min_count=1)
+            st.markdown("**Distribuição por faixa etária e município**")
+            st.plotly_chart(px.box(resumo_idade_mun, x="categoria", y="doses", color="ano", points="all",
+                                   labels={"categoria": "Faixa etária", "doses": "Doses por município", "ano": "Ano"},
+                                   title="Distribuição municipal das doses por faixa etária"), use_container_width=True)
+            st.dataframe(resumo_idade_mun, use_container_width=True, hide_index=True)
     else:
         st.warning("A tabela mensal de vacinação ficou vazia. Confira se as abas 2024_ano/2025_ano existem e se os cabeçalhos dos meses estão em português; o carregador foi ajustado para aceitar nomes completos e abreviações. Se o aviso persistir, os cabeçalhos reais da planilha precisam ser inspecionados.")
 except Exception as exc:

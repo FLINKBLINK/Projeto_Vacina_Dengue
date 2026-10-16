@@ -101,3 +101,30 @@ def preparar_vacinacao_mensal(abas: dict[str, pd.DataFrame], ano: int) -> pd.Dat
     longa["doses"] = pd.to_numeric(longa["doses"], errors="coerce")
     longa["ano"] = ano
     return longa
+
+def preparar_vacinacao_categoria(abas: dict[str, pd.DataFrame], ano: int, categoria: str) -> pd.DataFrame:
+    """Converte abas por sexo ou faixa etária para formato longo."""
+    if categoria not in ("sexo", "faixaetaria"):
+        raise ValueError("categoria deve ser 'sexo' ou 'faixaetaria'.")
+    chave = f"{ano}_{categoria}"
+    if chave not in abas:
+        return pd.DataFrame(columns=["municipio", "categoria", "doses", "ano"])
+    df = abas[chave].copy()
+    df = df.rename(columns={df.columns[0]: "municipio_original"})
+    df["municipio"] = df["municipio_original"].map(normalizar_municipio)
+    colunas = [
+        c for c in df.columns
+        if c not in ("municipio_original", "municipio")
+        and str(c).strip().lower() not in ("categoria", "total", "municípios", "municipios")
+    ]
+    if not colunas:
+        return pd.DataFrame(columns=["municipio", "categoria", "doses", "ano"])
+    longa = df.melt(
+        id_vars=["municipio", "municipio_original"],
+        value_vars=colunas,
+        var_name="categoria",
+        value_name="doses",
+    )
+    longa["doses"] = pd.to_numeric(longa["doses"], errors="coerce")
+    longa["ano"] = ano
+    return longa

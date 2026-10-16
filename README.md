@@ -56,6 +56,10 @@ A conferência inicial identificou, entre outros pontos, diferença entre os dad
 - DATASUS — Transferência de arquivos: https://datasus.saude.gov.br/transferencia-de-arquivos/
 - RNDS / InfoMS — Vacinação: https://infoms.saude.gov.br/extensions/SEIDIGI_DEMAS_VACINACAO_CALENDARIO_NACIONAL_OCORRENCIA/
 
+## Auditoria
+
+A auditoria inicial das planilhas e as divergências verificadas estão documentadas em [docs/AUDITORIA_DADOS.md](docs/AUDITORIA_DADOS.md).
+
 ## Status
 
 Estrutura inicial Python/Streamlit. As análises devem ser validadas contra os arquivos de origem e o artigo antes de serem consideradas resultados finais.

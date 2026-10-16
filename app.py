@@ -93,7 +93,7 @@ try:
                                        labels={"categoria": "Grupo", "doses": "Doses registradas", "ano": "Ano"},
                                        title=titulo), use_container_width=True)
     else:
-        st.info("Não foram encontradas abas anuais de vacinação com colunas mensais reconhecidas.")
+        st.warning("A tabela mensal de vacinação ficou vazia. Confira se as abas 2024_ano/2025_ano existem e se os cabeçalhos dos meses estão em português; o carregador foi ajustado para aceitar nomes completos e abreviações. Se o aviso persistir, os cabeçalhos reais da planilha precisam ser inspecionados.")
 except Exception as exc:
     st.warning(f"A parte de vacinação não pôde ser calculada: {exc}")
 
@@ -118,8 +118,12 @@ if not vac.empty and not casos_brutos.empty:
         st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", labels={"doses": f"Doses registradas em {ano_doses_corr}", "registros": f"Registros SINAN em {ano_casos_corr}"}, title="Doses registradas versus registros SINAN por município"), use_container_width=True)
     else:
         st.info("A correlação exige pelo menos três municípios com valores válidos e variação nas duas variáveis.")
+elif vac.empty:
+    st.warning("Correlação não calculada: nenhuma dose mensal foi carregada do arquivo de vacinação. Confira a seção Vacinação e os cabeçalhos da planilha.")
+elif casos_brutos.empty:
+    st.warning("Correlação não calculada: não há registros SINAN carregados.")
 else:
-    st.info("Sem dados suficientes de vacinação e SINAN para esta comparação.")
+    st.info("Não foi possível calcular a correlação com os dados disponíveis. Confira os anos selecionados e se há pelo menos três municípios em comum com valores válidos e variação nas duas variáveis.")
 
 st.subheader("Qualidade e limitações dos dados")
 divergencias = casos_brutos[casos_brutos["diverge_ano_arquivo"]].copy()

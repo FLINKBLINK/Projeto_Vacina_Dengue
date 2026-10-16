@@ -86,6 +86,15 @@ def inicializar_esquema(db_path: str | Path | None = None) -> Path:
     caminho = Path(db_path) if db_path is not None else DB_PATH
     with conectar(caminho) as conexao:
         conexao.executescript(SCHEMA)
+        # Compatibilidade com bancos criados por versões anteriores do esquema.
+        # O ETL importa arquivo_ano em registros_sinan; garanta que a coluna exista
+        # antes da carga, mesmo quando a tabela já existia e CREATE TABLE foi ignorado.
+        colunas_sinan = {
+            linha["name"]
+            for linha in conexao.execute("PRAGMA table_info(registros_sinan)").fetchall()
+        }
+        if "arquivo_ano" not in colunas_sinan:
+            conexao.execute("ALTER TABLE registros_sinan ADD COLUMN arquivo_ano INTEGER")
     return caminho
 
 

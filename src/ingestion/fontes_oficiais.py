@@ -10,7 +10,7 @@ from typing import Any
 
 import requests
 
-CKAN_ACTION_API = "https://dadosabertos.saude.gov.br/api/3/action"
+CKAN_ACTION_API = "https://ckan-dadosabertos.saude.gov.br/api/3/action"
 TIMEOUT_SECONDS = 30
 USER_AGENT = "Projeto-Vacina-Dengue/1.0 (catalogo-dados-publicos)"
 

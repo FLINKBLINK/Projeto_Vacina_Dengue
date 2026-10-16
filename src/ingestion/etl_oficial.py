@@ -141,7 +141,8 @@ def _codigo_municipio(row: dict[str, Any]) -> str | None:
         return None
     digits = "".join(ch for ch in str(value) if ch.isdigit())
     if len(digits) == 6:
-        digits = digits + "0"
+        # Algumas tabelas do SUS usam o código municipal sem o último dígito.
+        return next((codigo for codigo in MUNICIPIOS_IBGE if codigo.startswith(digits)), None)
     return digits if digits in MUNICIPIOS_IBGE else None
 
 

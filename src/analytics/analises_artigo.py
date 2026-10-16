@@ -75,14 +75,14 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
     anual = anual.reset_index().rename(columns={"ano_calculado": "ano"})
     anual["variacao_2023_2024_pct"] = calcular_variacao_percentual(anual[2023], anual[2024])
 
-    jan_mai = (casos_df[casos_df["ano_calculado"].isin([2023, 2025]) &
-                        casos_df["mes_calculado"].between(1, 5)]
+    jan_abr = (casos_df[casos_df["ano_calculado"].isin([2023, 2025]) &
+                        casos_df["mes_calculado"].between(1, 4)]
                .groupby(["municipio", "ano_calculado"]).size().unstack(fill_value=0))
     for ano in (2023, 2025):
-        if ano not in jan_mai.columns:
-            jan_mai[ano] = 0
-    jan_mai = jan_mai.reset_index()
-    jan_mai["variacao_2023_2025_jan_mai_pct"] = calcular_variacao_percentual(jan_mai[2023], jan_mai[2025])
+        if ano not in jan_abr.columns:
+            jan_abr[ano] = 0
+    jan_abr = jan_abr.reset_index()
+    jan_abr["variacao_2023_2025_jan_abr_pct"] = calcular_variacao_percentual(jan_abr[2023], jan_abr[2025])
 
     doses_2024 = (vac[vac["ano"] == 2024].groupby("municipio", as_index=False)["doses"]
                   .sum(min_count=1).rename(columns={"doses": "doses_2024"}))
@@ -91,30 +91,30 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
         taxa_2024["doses_2024"], taxa_2024["populacao"])
 
     corr1_df = taxa_2024.merge(anual[["municipio", "variacao_2023_2024_pct"]], on="municipio", how="inner")
-    corr2_df = taxa_2024.merge(jan_mai[["municipio", "variacao_2023_2025_jan_mai_pct"]], on="municipio", how="inner")
+    corr2_df = taxa_2024.merge(jan_abr[["municipio", "variacao_2023_2025_jan_abr_pct"]], on="municipio", how="inner")
 
     corr1 = _correlacionar("Correlação 1", corr1_df, "taxa_doses_2024_pct", "variacao_2023_2024_pct")
-    corr2 = _correlacionar("Correlação 2", corr2_df, "taxa_doses_2024_pct", "variacao_2023_2025_jan_mai_pct")
+    corr2 = _correlacionar("Correlação 2", corr2_df, "taxa_doses_2024_pct", "variacao_2023_2025_jan_abr_pct")
 
     meses_2025 = sorted(vac.loc[vac["ano"] == 2025, "mes_numero"].dropna().astype(int).unique().tolist())
-    tem_jan_mai_2025 = all(m in meses_2025 for m in range(1, 6))
-    casos_2025_jan_mai = (casos_df[(casos_df["ano_calculado"] == 2025) &
-                                   casos_df["mes_calculado"].between(1, 5)]
-                          .groupby("municipio").size().rename("registros_2025_jan_mai").reset_index())
+    tem_jan_abr_2025 = all(m in meses_2025 for m in range(1, 5))
+    casos_2025_jan_abr = (casos_df[(casos_df["ano_calculado"] == 2025) &
+                                   casos_df["mes_calculado"].between(1, 4)]
+                          .groupby("municipio").size().rename("registros_2025_jan_abr").reset_index())
     doses_acumuladas = vac[((vac["ano"] == 2024) & vac["mes_numero"].between(1, 12)) |
-                           ((vac["ano"] == 2025) & vac["mes_numero"].between(1, 5))]
+                           ((vac["ano"] == 2025) & vac["mes_numero"].between(1, 4))]
     doses_acumuladas = doses_acumuladas.groupby("municipio", as_index=False)["doses"].sum(min_count=1)
-    doses_acumuladas = doses_acumuladas.rename(columns={"doses": "doses_acumuladas_2024_2025_jan_mai"})
+    doses_acumuladas = doses_acumuladas.rename(columns={"doses": "doses_acumuladas_2024_2025_jan_abr"})
     corr3_df = doses_acumuladas.merge(pop, on="municipio", how="left").merge(
-        casos_2025_jan_mai, on="municipio", how="inner")
+        casos_2025_jan_abr, on="municipio", how="inner")
     corr3_df["taxa_doses_acumulada_pct"] = calcular_doses_por_100_habitantes(
-        corr3_df["doses_acumuladas_2024_2025_jan_mai"], corr3_df["populacao"])
-    if tem_jan_mai_2025:
-        corr3 = _correlacionar("Correlação 3", corr3_df, "taxa_doses_acumulada_pct", "registros_2025_jan_mai")
+        corr3_df["doses_acumuladas_2024_2025_jan_abr"], corr3_df["populacao"])
+    if tem_jan_abr_2025:
+        corr3 = _correlacionar("Correlação 3", corr3_df, "taxa_doses_acumulada_pct", "registros_2025_jan_abr")
     else:
         corr3 = _correlacionar(
-            "Correlação 3", corr3_df, "taxa_doses_acumulada_pct", "registros_2025_jan_mai",
-            status="indisponível: faltam meses de vacinação de 2025 para completar janeiro–maio",
+            "Correlação 3", corr3_df, "taxa_doses_acumulada_pct", "registros_2025_jan_abr",
+            status="indisponível: faltam meses de vacinação de janeiro a abril de 2025",
         )
 
     return {
@@ -123,7 +123,7 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
         "correlacao_2_dados": corr2_df,
         "correlacao_3_dados": corr3_df,
         "casos_anuais": anual,
-        "casos_jan_mai": jan_mai,
+        "casos_jan_abr": jan_abr,
         "meses_vacinacao_2025": meses_2025,
-        "tem_jan_mai_vacinacao_2025": tem_jan_mai_2025,
+        "tem_jan_abr_vacinacao_2025": tem_jan_abr_2025,
     }

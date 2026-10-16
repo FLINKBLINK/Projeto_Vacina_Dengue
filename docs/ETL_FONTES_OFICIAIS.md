@@ -13,12 +13,12 @@ Swagger oficial: https://apidadosabertos.saude.gov.br/static/swagger.json
 
 ## Inspeção real de esquema
 
-O script `scripts/inspecionar_esquema_api.py` consulta pequenas amostras e imprime somente nomes de campos, tipos JSON e contagens, nunca valores de registros.
+O script `scripts/inspecionar_esquema_api.py` consulta amostras limitadas a 100 registros por chamada e imprime nomes de campos, tipos JSON e frequências de identificadores geográficos/classificações públicas permitidas. Não imprime dados pessoais nem o conteúdo bruto dos registros.
 
 Validação executada em 16/10/2026:
 - SINAN dengue, ano 2024 sem filtro municipal: HTTP 200 e 5 registros de amostra.
 - SINAN dengue, ano 2024 com `id_municip=354340` (código municipal de seis dígitos usado na consulta): HTTP 200 e 5 registros de amostra.
-- A mesma consulta com `id_municip=35434` e `id_municip=3543402` retornou zero registros. Embora o código de seis dígitos tenha retornado cinco linhas, a amostra também tem cinco linhas sem filtro; isso não prova que o filtro foi aplicado corretamente. A correspondência geográfica deve ser confirmada antes de considerar o SINAN validado para carga histórica.
+- A mesma consulta com `id_municip=35434` e `id_municip=3543402` retornou zero registros. Embora o código de seis dígitos tenha retornado cinco linhas, a amostra também tinha cinco linhas sem filtro; isso não prova que o filtro foi aplicado corretamente. A inspeção ampliada agora compara frequências dos identificadores públicos observados, mas continua sendo amostra limitada e não substitui a validação completa da geografia antes da carga histórica.
 - Campos SINAN relevantes observados: `id_municip`, `municipio`, `nu_ano`, `dt_notific`, `id_mn_resi` e `classi_fin`. A API expõe muitos outros campos clínicos/epidemiológicos, preservados em JSON bruto.
 - População residente: HTTP 200, com campos `ano`, `cod_mun`, `idade`, `pop` e `sexo`. Os registros vêm desagregados por sexo e idade; não se deve tratar cada linha como população total municipal.
 - PNI 2025: HTTP 200; a amostra contém campos `codigo_vacina`, `codigo_dose_vacina`, `data_vacina`, `codigo_municipio_estabelecimento`, `codigo_municipio_paciente` e descrições de vacina/fabricante, entre outros. A amostra inicial não valida por si só qual código identifica a vacina contra dengue.
@@ -54,3 +54,10 @@ Para PNI nacional, use `--incluir-pni` somente após planejar o volume e validar
 - Os dados oficiais são armazenados em tabelas próprias e não substituem automaticamente as planilhas auditadas nem alimentam os gráficos legados. Essa separação evita alterar silenciosamente as métricas publicadas.
 - Os campos JSON brutos são preservados para permitir auditoria de esquema e futuras transformações. As tabelas analíticas normalizadas e a conexão aos gráficos devem ocorrer após validar nomes, semântica e filtros do endpoint com dados reais.
 - `--max-pages` serve apenas para testes. Uma carga limitada não deve ser descrita como histórica completa.
+
+
+## Validação geográfica e agregação (em andamento)
+
+O relatório de inspeção ampliado mostra contagens de valores para campos públicos como `id_municip`, `municipio`, `cod_mun`, `codigo_municipio_paciente`, `codigo_municipio_estabelecimento` e códigos/descrições de vacina. A contagem ajuda a detectar filtros ignorados ou códigos inesperados, sem expor dados pessoais. Como a amostra é limitada a 100 linhas por chamada, ela não comprova completude nem permite inferir totais municipais.
+
+A população residente deve ser agregada somente após carregar todas as páginas do município e verificar os grupos de `sexo` e `idade`. A soma deve evitar duplicar totais ou categorias agregadas. Até que os grupos e a semântica do endpoint estejam validados, os números de população desta fonte não devem substituir os valores já usados no dashboard.

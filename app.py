@@ -61,6 +61,7 @@ else:
     st.info("Não há datas de notificação válidas para os filtros atuais.")
 
 st.subheader("Vacinação")
+st.caption("A aba anual de 2025 disponível contém janeiro a abril; maio não consta na planilha auditada.")
 vac = pd.DataFrame()
 try:
     vac = pd.concat([preparar_vacinacao_mensal(abas_vac, 2024), preparar_vacinacao_mensal(abas_vac, 2025)], ignore_index=True)

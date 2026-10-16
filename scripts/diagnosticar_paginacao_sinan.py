@@ -19,7 +19,7 @@ PAGE_SIZE = 1000
 TIMEOUT = 60
 CHAVES_REGISTROS = (
     "data", "dados", "results", "resultados", "items", "registros",
-    "content", "records", "value",
+    "content", "records", "value", "dengue",
 )
 CHAVES_ERRO = ("message", "detail", "erro", "error", "mensagem")
 MUNICIPIOS = {

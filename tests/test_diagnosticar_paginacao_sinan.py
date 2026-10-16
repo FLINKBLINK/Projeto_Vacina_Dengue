@@ -45,3 +45,12 @@ def test_lista_registros_aceita_lista_vazia():
 def test_lista_registros_informa_chaves_sem_expor_registros():
     with pytest.raises(ValueError, match="Chaves recebidas.*message"):
         lista_registros({"message": "Parâmetro inválido", "code": 400})
+
+
+def test_lista_registros_aceita_envelope_especifico_da_api_sinan():
+    payload = {"dengue": [{"id_mn_resi": "354340"}]}
+    assert lista_registros(payload) == [{"id_mn_resi": "354340"}]
+
+
+def test_lista_registros_aceita_envelope_dengue_vazio():
+    assert lista_registros({"dengue": []}) == []

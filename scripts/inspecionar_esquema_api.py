@@ -18,7 +18,7 @@ HEADERS = {
 TIMEOUT = 30
 SAMPLE_LIMIT = 100
 CAMPOS_PUBLICOS = {
-    "id_municip", "municipio", "nu_ano", "ano", "cod_mun",
+    "id_municip", "id_mn_resi", "municipio", "nu_ano", "ano", "cod_mun",
     "nome_municipio_estabelecimento", "nome_municipio_paciente",
     "codigo_municipio_estabelecimento", "codigo_municipio_paciente",
     "codigo_vacina", "descricao_vacina", "codigo_dose_vacina",
@@ -107,6 +107,8 @@ def main() -> int:
          {"nu_ano": "2024", "id_municip": "35434"}),
         ("sinan_2024_municipio_7_digitos", "/arboviroses/dengue",
          {"nu_ano": "2024", "id_municip": "3543402"}),
+        ("sinan_2024_residencia_ribeirao", "/arboviroses/dengue",
+         {"nu_ano": "2024", "id_mn_resi": "354340"}),
         ("populacao_2023_ribeirao", "/vigilancia-e-meio-ambiente/svsa-populacao-residente",
          {"ano": 2023, "cod_mun": 3543402}),
         ("pni_2025_amostra_nacional", "/vacinacao/doses-aplicadas-pni-2025", {}),

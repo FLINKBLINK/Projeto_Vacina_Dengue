@@ -88,3 +88,15 @@ A auditoria inicial das planilhas e as divergências verificadas estão document
 ## Status
 
 Estrutura inicial Python/Streamlit. As análises devem ser validadas contra os arquivos de origem e o artigo antes de serem consideradas resultados finais.
+
+## ETL das fontes oficiais do Ministério da Saúde
+
+O módulo experimental `src/ingestion/etl_oficial.py` consulta as APIs oficiais com paginação e grava os registros brutos da região em tabelas SQLite separadas (`oficiais_registros` e `oficiais_execucoes`). Ele não substitui as tabelas que alimentam o dashboard atual.
+
+Teste limitado a uma página por consulta:
+
+```bash
+python -m scripts.etl_fontes_oficiais --max-pages 1
+```
+
+A documentação completa está em [docs/ETL_FONTES_OFICIAIS.md](docs/ETL_FONTES_OFICIAIS.md). A extração PNI nacional é opcional porque contém diversas imunizações e a rota não documenta filtro de vacina; não interpretar todas as doses como vacina contra dengue. Antes de migrar os gráficos para os dados oficiais, valide o esquema e a geografia dos registros. Consulte a [execução do PR de ETL](https://github.com/FLINKBLINK/Projeto_Vacina_Dengue/pull/8).

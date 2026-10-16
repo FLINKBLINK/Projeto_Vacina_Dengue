@@ -75,7 +75,7 @@ def buscar_conjuntos(termo: str, limite: int = 100) -> list[dict[str, Any]]:
                     "title": operacao.get("summary") or path,
                     "description": operacao.get("description", ""),
                     "method": metodo.upper(),
-                    "url": f"{API_BASE}{swagger.get('basePath', '/v1')}{path}",
+                    "url": f"{API_BASE}{path}",
                     "tags": operacao.get("tags", []),
                 })
             if len(resultados) >= limite:

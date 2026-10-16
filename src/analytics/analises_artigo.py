@@ -33,9 +33,12 @@ def _correlacionar(nome: str, dados: pd.DataFrame, x: str, y: str, status: str =
         "interpretacao": status,
     }
     referencia = RESULTADOS_ARTIGO[nome]
+    status_final = status
+    if status == "calculada" and (pd.isna(resultado["r"]) or pd.isna(resultado["p_value"])):
+        status_final = "indefinida: amostra insuficiente ou variável sem variação"
     resultado.update({
         "analise": nome,
-        "status": status if status != "calculada" else "calculada",
+        "status": status_final,
         "r_artigo": referencia["r"],
         "p_artigo": referencia["p_value"],
         "diferenca_r": resultado["r"] - referencia["r"] if pd.notna(resultado["r"]) else np.nan,

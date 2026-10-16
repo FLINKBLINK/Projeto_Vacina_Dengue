@@ -136,7 +136,7 @@ def _campo(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
 
 
 def _codigo_municipio(row: dict[str, Any]) -> str | None:
-    value = _campo(row, ("cod_mun", "id_municip", "codigo_municipio", "codigo_ibge", "co_mun_res"))
+    value = _campo(row, ("cod_mun", "id_municip", "codigo_municipio", "codigo_ibge", "co_mun_res", "co_mun_not", "co_mun_paciente", "codigo_municipio_estabelecimento", "codigo_municipio_paciente", "municipio_codigo"))
     if value is None:
         return None
     digits = "".join(ch for ch in str(value) if ch.isdigit())
@@ -236,7 +236,7 @@ def executar_extracao(
         for ano in anos_sinan:
             for codigo in MUNICIPIOS_IBGE:
                 consultas.append(("sinan_dengue", ENDPOINTS["sinan_dengue"],
-                                  {"nu_ano": str(ano), "id_municip": codigo}, ano))
+                                  {"nu_ano": str(ano), "id_municip": codigo[:-1]}, ano))
         for ano in anos_populacao:
             for codigo in MUNICIPIOS_IBGE:
                 consultas.append(("populacao", ENDPOINTS["populacao"],

@@ -36,7 +36,7 @@ def test_analises_artigo_calcula_variacoes_e_marca_correlacao_3_incompleta():
 
 def test_analises_artigo_habilita_correlacao_3_com_maio():
     municipios = ["Barrinha", "Cravinhos", "Guatapará"]
-    populacao = pd.DataFrame({"municipio": municipios, "populacao": [1000, 2000, 3000]})
+    populacao = pd.DataFrame({"municipio": municipios, "populacao": [1000, 1000, 1000]})
     vacinacao = pd.DataFrame([
         {"municipio": m, "ano": ano, "mes_numero": mes, "doses": (i + 1) * mes}
         for i, m in enumerate(municipios)

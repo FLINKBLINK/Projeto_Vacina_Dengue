@@ -2,7 +2,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes, carregar_casos, carregar_populacao, carregar_vacinacao, preparar_vacinacao_mensal
+from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes, carregar_casos, carregar_populacao, carregar_vacinacao, preparar_vacinacao_mensal, preparar_vacinacao_categoria
 from src.analytics.indicadores import calcular_doses_por_100_habitantes
 from src.analytics.estatisticas import correlacao_pearson
 
@@ -72,6 +72,15 @@ try:
         indicador["doses_por_100_hab"] = calcular_doses_por_100_habitantes(indicador["doses"], indicador["populacao"])
         st.caption("Doses por 100 habitantes é um indicador descritivo, não cobertura vacinal oficial nem percentual de pessoas únicas vacinadas.")
         st.dataframe(indicador, use_container_width=True, hide_index=True)
+        for categoria, titulo in [("sexo", "Doses registradas por sexo"), ("faixaetaria", "Doses registradas por faixa etária")]:
+            partes_categoria = [preparar_vacinacao_categoria(abas_vac, ano, categoria) for ano in (2024, 2025)]
+            dados_categoria = pd.concat(partes_categoria, ignore_index=True)
+            dados_categoria = dados_categoria[dados_categoria["municipio"].isin(municipios_filtro)]
+            if not dados_categoria.empty:
+                resumo_categoria = dados_categoria.groupby(["ano", "categoria"], as_index=False)["doses"].sum(min_count=1)
+                st.plotly_chart(px.bar(resumo_categoria, x="categoria", y="doses", color="ano", barmode="group",
+                                       labels={"categoria": "Grupo", "doses": "Doses registradas", "ano": "Ano"},
+                                       title=titulo), use_container_width=True)
     else:
         st.info("Não foram encontradas abas anuais de vacinação com colunas mensais reconhecidas.")
 except Exception as exc:

@@ -5,6 +5,7 @@ on:
     branches:
       - feat/validacao-esquema-api
       - feat/validacao-geografia-agregacoes
+      - feat/validacao-residencia-sinan
   workflow_dispatch:
 
 permissions:

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS registros_sinan (
     data_notificacao TEXT,
     idade_anos,
     sexo TEXT,
-    ano_arquivo INTEGER,
+    arquivo_ano INTEGER,
     ano_data INTEGER,
     diverge_ano_arquivo INTEGER NOT NULL DEFAULT 0,
     fonte TEXT NOT NULL

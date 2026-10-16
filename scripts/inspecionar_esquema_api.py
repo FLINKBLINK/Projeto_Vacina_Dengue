@@ -6,8 +6,6 @@ Não grava dados pessoais nem substitui o ETL principal.
 from __future__ import annotations
 
 import json
-import sys
-from collections import Counter
 from typing import Any
 
 import requests
@@ -58,9 +56,7 @@ def inspecionar(nome: str, rota: str, params: dict[str, Any]) -> dict[str, Any]:
         headers=HEADERS, timeout=TIMEOUT,
     )
     resultado: dict[str, Any] = {
-        "fonte": nome,
-        "rota": rota,
-        "http_status": response.status_code,
+        "fonte": nome, "rota": rota, "http_status": response.status_code,
         "parametros_enviados": sorted(params.keys()),
     }
     response.raise_for_status()
@@ -84,8 +80,13 @@ def inspecionar(nome: str, rota: str, params: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     consultas = [
-        ("sinan_dengue_2024_ribeirao", "/arboviroses/dengue",
+        ("sinan_2024_sem_filtro_municipal", "/arboviroses/dengue", {"nu_ano": "2024"}),
+        ("sinan_2024_municipio_6_digitos", "/arboviroses/dengue",
+         {"nu_ano": "2024", "id_municip": "354340"}),
+        ("sinan_2024_municipio_5_digitos", "/arboviroses/dengue",
          {"nu_ano": "2024", "id_municip": "35434"}),
+        ("sinan_2024_municipio_7_digitos", "/arboviroses/dengue",
+         {"nu_ano": "2024", "id_municip": "3543402"}),
         ("populacao_2023_ribeirao", "/vigilancia-e-meio-ambiente/svsa-populacao-residente",
          {"ano": 2023, "cod_mun": 3543402}),
         ("pni_2025_amostra_nacional", "/vacinacao/doses-aplicadas-pni-2025", {}),

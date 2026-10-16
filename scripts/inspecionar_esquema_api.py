@@ -16,6 +16,7 @@ HEADERS = {
     "Accept": "application/json",
 }
 TIMEOUT = 30
+SAMPLE_LIMIT = 100
 CAMPOS_PUBLICOS = {
     "id_municip", "municipio", "nu_ano", "ano", "cod_mun",
     "nome_municipio_estabelecimento", "nome_municipio_paciente",
@@ -58,7 +59,7 @@ def tipo_json(value: Any) -> str:
 
 def inspecionar(nome: str, rota: str, params: dict[str, Any]) -> dict[str, Any]:
     response = requests.get(
-        f"{BASE}{rota}", params={**params, "limit": 5, "offset": 0},
+        f"{BASE}{rota}", params={**params, "limit": SAMPLE_LIMIT, "offset": 0},
         headers=HEADERS, timeout=TIMEOUT,
     )
     resultado: dict[str, Any] = {
@@ -72,20 +73,27 @@ def inspecionar(nome: str, rota: str, params: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"{nome}: resposta não é JSON válido.") from exc
     rows = extrair_lista(payload)
     tipos: dict[str, set[str]] = {}
-    identificadores: dict[str, set[str]] = {}
+    identificadores: dict[str, dict[str, int]] = {}
     for row in rows:
         for key, value in row.items():
             tipos.setdefault(str(key), set()).add(tipo_json(value))
             if str(key).lower() in CAMPOS_PUBLICOS and value not in (None, ""):
-                identificadores.setdefault(str(key), set()).add(str(value))
+                bucket = identificadores.setdefault(str(key), {})
+                label = str(value)
+                bucket[label] = bucket.get(label, 0) + 1
     resultado["registros_amostra"] = len(rows)
     resultado["campos"] = [
         {"nome": key, "tipos_observados": sorted(values)}
         for key, values in sorted(tipos.items())
     ]
     resultado["identificadores_publicos_observados"] = {
-        key: sorted(values)[:10] for key, values in sorted(identificadores.items())
+        key: [
+            {"valor": value, "ocorrencias_na_amostra": count}
+            for value, count in sorted(values.items(), key=lambda item: (-item[1], item[0]))[:20]
+        ]
+        for key, values in sorted(identificadores.items())
     }
+    resultado["limite_amostra"] = SAMPLE_LIMIT
     resultado["amostra_vazia"] = len(rows) == 0
     return resultado
 

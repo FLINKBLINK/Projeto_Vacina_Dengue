@@ -35,3 +35,32 @@ def test_pearson_sem_variacao_fica_indefinido():
     resultado = correlacao_pearson([1, 1, 1], [2, 3, 4])
     assert np.isnan(resultado["r"])
     assert "indefinida" in resultado["interpretacao"]
+
+def test_preparar_vacinacao_reconhece_meses_completos_acentos_e_abreviacoes():
+    from src.analytics.consultas import preparar_vacinacao_mensal
+
+    abas = {
+        "2024_ano": pd.DataFrame({
+            "Município": ["Ribeirão Preto"],
+            "Janeiro": [10],
+            "MARÇO": [20],
+            "Abr.": [30],
+            "dezembro": [40],
+        })
+    }
+    resultado = preparar_vacinacao_mensal(abas, 2024)
+
+    assert resultado["mes"].tolist() == ["jan", "mar", "abr", "dez"]
+    assert resultado["doses"].tolist() == [10, 20, 30, 40]
+    assert resultado["municipio"].tolist() == ["Ribeirão Preto"] * 4
+    assert resultado["ano"].tolist() == [2024] * 4
+
+
+def test_preparar_vacinacao_sem_colunas_de_mes_retorna_vazio():
+    from src.analytics.consultas import preparar_vacinacao_mensal
+
+    resultado = preparar_vacinacao_mensal(
+        {"2025_ano": pd.DataFrame({"Município": ["Serrana"], "Total": [25]})},
+        2025,
+    )
+    assert resultado.empty

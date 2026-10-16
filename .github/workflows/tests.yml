@@ -19,4 +19,4 @@ jobs:
       - name: Validar sintaxe
         run: python -m compileall -q app.py src tests
       - name: Executar testes
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q

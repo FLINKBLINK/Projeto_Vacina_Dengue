@@ -135,30 +135,30 @@ except Exception as exc:
     st.warning(f"A parte de vacinação não pôde ser calculada: {exc}")
 
 st.subheader("Reprodução das três correlações do artigo")
-st.write("Esta seção segue os recortes descritos no artigo. Os cálculos usam registros SINAN disponíveis; como as planilhas não têm classificação final, eles não devem ser interpretados automaticamente como casos confirmados.")
+st.write("As análises de 2025 usam somente janeiro a abril, conforme a disponibilidade atual das bases. Os valores publicados no artigo são mantidos como referência histórica, mas não são diretamente comparáveis quando o período foi ajustado. Os cálculos usam registros SINAN, não necessariamente casos confirmados.")
 try:
     analises_artigo = construir_analises_artigo(vac_banco, casos_brutos, populacao)
     tabela_corr = analises_artigo["correlacoes"].copy()
     tabela_corr = tabela_corr[["analise", "status", "n_municipios", "r", "p_value", "r_artigo", "p_artigo", "diferenca_r", "diferenca_p"]]
     st.dataframe(tabela_corr, use_container_width=True, hide_index=True)
-    if not analises_artigo["tem_jan_mai_vacinacao_2025"]:
-        st.warning("A Correlação 3 não pode ser reproduzida integralmente: faltam dados de vacinação de maio de 2025. O resultado publicado é mostrado apenas como referência, não como resultado recalculado.")
+    if not analises_artigo["tem_jan_abr_vacinacao_2025"]:
+        st.warning("A Correlação 3 não pode ser calculada porque faltam um ou mais meses entre janeiro e abril de 2025 na vacinação.")
     else:
-        st.caption("A Correlação 3 usa vacinação acumulada de janeiro de 2024 a maio de 2025 e registros SINAN de janeiro a maio de 2025.")
+        st.caption("A Correlação 3 usa vacinação acumulada de janeiro a dezembro de 2024 mais janeiro a abril de 2025, comparada aos registros SINAN de janeiro a abril de 2025.")
 
     opcoes_corr = {
         "Correlação 1 — doses 2024 × variação anual 2023–2024":
             ("correlacao_1_dados", "taxa_doses_2024_pct", "variacao_2023_2024_pct"),
-        "Correlação 2 — doses 2024 × variação Jan–Mai 2023–2025":
-            ("correlacao_2_dados", "taxa_doses_2024_pct", "variacao_2023_2025_jan_mai_pct"),
-        "Correlação 3 — doses acumuladas × registros Jan–Mai 2025":
-            ("correlacao_3_dados", "taxa_doses_acumulada_pct", "registros_2025_jan_mai"),
+        "Correlação 2 — doses 2024 × variação Jan–Abr 2023–2025":
+            ("correlacao_2_dados", "taxa_doses_2024_pct", "variacao_2023_2025_jan_abr_pct"),
+        "Correlação 3 — doses acumuladas × registros Jan–Abr 2025":
+            ("correlacao_3_dados", "taxa_doses_acumulada_pct", "registros_2025_jan_abr"),
     }
     escolha_corr = st.selectbox("Visualizar dispersão por análise", list(opcoes_corr))
     chave_df, eixo_x, eixo_y = opcoes_corr[escolha_corr]
     df_corr = analises_artigo[chave_df].dropna(subset=[eixo_x, eixo_y]).copy()
-    if escolha_corr.startswith("Correlação 3") and not analises_artigo["tem_jan_mai_vacinacao_2025"]:
-        st.info("Gráfico da Correlação 3 omitido para evitar apresentar dados parciais como se cobrissem janeiro–maio.")
+    if escolha_corr.startswith("Correlação 3") and not analises_artigo["tem_jan_abr_vacinacao_2025"]:
+        st.info("Gráfico da Correlação 3 omitido porque a base não contém todos os meses de janeiro a abril de 2025.")
     elif len(df_corr) >= 3 and df_corr[eixo_x].nunique() > 1 and df_corr[eixo_y].nunique() > 1:
         fig = px.scatter(df_corr, x=eixo_x, y=eixo_y, text="municipio",
                          labels={eixo_x: eixo_x.replace("_", " "), eixo_y: eixo_y.replace("_", " ")},

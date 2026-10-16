@@ -61,3 +61,24 @@ Para PNI nacional, use `--incluir-pni` somente após planejar o volume e validar
 O relatório de inspeção ampliado mostra contagens de valores para campos públicos como `id_municip`, `municipio`, `cod_mun`, `codigo_municipio_paciente`, `codigo_municipio_estabelecimento` e códigos/descrições de vacina. A contagem ajuda a detectar filtros ignorados ou códigos inesperados, sem expor dados pessoais. Como a amostra é limitada a 100 linhas por chamada, ela não comprova completude nem permite inferir totais municipais.
 
 A população residente deve ser agregada somente após carregar todas as páginas do município e verificar os grupos de `sexo` e `idade`. A soma deve evitar duplicar totais ou categorias agregadas. Até que os grupos e a semântica do endpoint estejam validados, os números de população desta fonte não devem substituir os valores já usados no dashboard.
+
+## Diagnóstico de paginação SINAN por residência
+
+A inspeção de 16/10/2026 mostrou que a consulta com `id_mn_resi=354340` retornou 100 linhas, mas os valores observados de `id_mn_resi` eram de outros municípios. Portanto, a API respondeu HTTP 200, porém a amostra indica que o parâmetro de residência pode estar sendo ignorado. Não usar esse parâmetro como filtro confiável sem nova validação.
+
+O script `scripts/diagnosticar_paginacao_sinan.py` foi criado para estimar o volume por paginação sem salvar registros nem imprimir dados pessoais. Ele consulta o ano inteiro sem filtro municipal, lê páginas de até 1.000 linhas e filtra localmente pelos seis primeiros dígitos de `id_mn_resi`, comparando com os dez municípios do projeto. O padrão limita a leitura a 10 páginas para evitar uma varredura nacional ilimitada.
+
+Diagnóstico inicial (até 10 páginas):
+
+```bash
+python -m scripts.diagnosticar_paginacao_sinan --ano 2024
+```
+
+Para testar uma página menor:
+
+```bash
+python -m scripts.diagnosticar_paginacao_sinan --ano 2024 --max-pages 1 --page-size 100
+```
+
+Se `varredura_completa` for `false`, os resultados são parciais: o limite de páginas foi atingido antes de uma página curta. Só considerar contagens históricas completas quando a paginação terminar normalmente; depois disso, ainda será necessário validar duplicatas, classificação final dos casos e semântica dos campos antes de gerar tabelas analíticas. O script é diagnóstico, não altera o ETL de produção nem as tabelas do dashboard.
+

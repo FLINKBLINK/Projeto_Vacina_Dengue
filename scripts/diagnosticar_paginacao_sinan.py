@@ -17,6 +17,11 @@ BASE = "https://apidadosabertos.saude.gov.br"
 ROTA = "/arboviroses/dengue"
 PAGE_SIZE = 1000
 TIMEOUT = 60
+CHAVES_REGISTROS = (
+    "data", "dados", "results", "resultados", "items", "registros",
+    "content", "records", "value",
+)
+CHAVES_ERRO = ("message", "detail", "erro", "error", "mensagem")
 MUNICIPIOS = {
     "350560": "Barrinha",
     "350780": "Brodowski",
@@ -32,14 +37,47 @@ MUNICIPIOS = {
 
 
 def lista_registros(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, list) and all(isinstance(x, dict) for x in payload):
-        return payload
+    """Extrai a lista de registros de formatos JSON comuns sem expor os dados."""
+    if isinstance(payload, list):
+        if all(isinstance(item, dict) for item in payload):
+            return payload
+        raise ValueError(
+            "A API SINAN retornou uma lista JSON, mas os itens não são objetos."
+        )
+
     if isinstance(payload, dict):
-        for key in ("data", "dados", "results", "resultados", "items", "registros"):
-            value = payload.get(key)
-            if isinstance(value, list) and all(isinstance(x, dict) for x in value):
-                return value
-    raise ValueError("Formato JSON inesperado na API SINAN.")
+        # Algumas APIs envolvem a lista em mais de um nível, por exemplo
+        # {"data": {"results": [...]}}.
+        for key in CHAVES_REGISTROS:
+            if key in payload:
+                value = payload[key]
+                if isinstance(value, list) and all(
+                    isinstance(item, dict) for item in value
+                ):
+                    return value
+                if isinstance(value, dict):
+                    try:
+                        return lista_registros(value)
+                    except ValueError:
+                        pass
+
+        chaves = ", ".join(sorted(str(key) for key in payload.keys())[:20])
+        detalhe = next(
+            (str(payload[key])[:240] for key in CHAVES_ERRO
+             if payload.get(key) not in (None, "")),
+            None,
+        )
+        mensagem = (
+            f"Formato JSON inesperado na API SINAN. "
+            f"Chaves recebidas: [{chaves or 'nenhuma'}]."
+        )
+        if detalhe:
+            mensagem += f" Mensagem da API: {detalhe}"
+        raise ValueError(mensagem)
+
+    raise ValueError(
+        f"Formato JSON inesperado na API SINAN: tipo {type(payload).__name__}."
+    )
 
 
 def codigo_residencia(row: dict[str, Any]) -> str | None:
@@ -101,7 +139,15 @@ def diagnosticar(ano: int, max_pages: int, page_size: int, pausa: float) -> dict
             timeout=TIMEOUT,
         )
         response.raise_for_status()
-        rows = lista_registros(response.json())
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            content_type = response.headers.get("Content-Type", "desconhecido")
+            raise ValueError(
+                "A API SINAN não retornou JSON válido "
+                f"(Content-Type: {content_type})."
+            ) from exc
+        rows = lista_registros(payload)
         paginas += 1
         total_lido += len(rows)
         resumo = resumir_linhas(rows)

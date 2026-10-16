@@ -29,7 +29,7 @@ def normalizar_texto(valor) -> str:
     return " ".join(texto.strip().upper().replace("_", " ").split())
 
 def normalizar_municipio(valor) -> str:
-    chave = normalizar_texto(valor)
+    chave = normalizar_texto(valor).replace("(SP)", "").strip()
     mapa = {"RIBEIRAO": "Ribeirão Preto", "RIBEIRAO PRETO": "Ribeirão Preto",
             "SERTAOZINHO": "Sertãozinho", "CRAVINHOS": "Cravinhos", "CRAVINHHOS": "Cravinhos",
             "JARDINOPOLIS": "Jardinópolis", "PRADOPOLIS": "Pradópolis", "PONTAL": "Pontal",

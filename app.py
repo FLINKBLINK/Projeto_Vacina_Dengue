@@ -175,10 +175,14 @@ try:
     else:
         st.info("Não há municípios suficientes com variação nos dois eixos para desenhar esta correlação.")
 
-    p_plot = tabela_corr[["analise", "p_value", "p_artigo"]].melt(
-        id_vars="analise", var_name="origem", value_name="p_value").dropna(subset=["p_value"])
+    # Renomeia os p-valores antes do melt para evitar colisão com value_name.
+    p_plot = tabela_corr[["analise", "p_value", "p_artigo"]].rename(
+        columns={"p_value": "p_calculado", "p_artigo": "p_publicado"}
+    ).melt(
+        id_vars="analise", var_name="origem", value_name="p_value"
+    ).dropna(subset=["p_value"])
     if not p_plot.empty:
-        p_plot["origem"] = p_plot["origem"].map({"p_value": "Calculado com as bases atuais", "p_artigo": "Publicado no artigo"})
+        p_plot["origem"] = p_plot["origem"].map({"p_calculado": "Calculado com as bases atuais", "p_publicado": "Publicado no artigo"})
         fig_p = px.bar(p_plot, x="analise", y="p_value", color="origem", barmode="group",
                        labels={"analise": "Análise", "p_value": "p-valor", "origem": "Referência"},
                        title="Comparação dos p-valores calculados e publicados")

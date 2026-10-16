@@ -36,6 +36,31 @@ streamlit run app.py
 
 Se os arquivos ainda não estiverem em `data/raw/` nem na raiz, o aplicativo abrirá e informará quais arquivos estão faltando.
 
+## Banco de dados SQLite
+
+O dashboard consulta os dados por meio de um banco SQLite local, criado automaticamente na primeira execução a partir das planilhas de origem. O arquivo é salvo em `data/processed/dengue.db` (ou no caminho definido pela variável de ambiente `DENGUE_DB_PATH`) e fica fora do versionamento; assim, o Streamlit Cloud pode recriá-lo a partir das planilhas que estão no repositório, sem depender de um arquivo de banco local do computador do desenvolvedor.
+
+### Gerar ou atualizar o banco manualmente
+
+```bash
+python -m scripts.gerar_banco
+```
+
+O processo de carga pode ser executado novamente sempre que as planilhas forem atualizadas. O dashboard verifica a assinatura das fontes e refaz a carga quando identifica mudanças.
+
+### Tabelas
+
+| Tabela | Conteúdo |
+| --- | --- |
+| `populacao_municipio` | População por município |
+| `registros_sinan` | Registros combinados das extrações SINAN, com data real e ano do arquivo de origem |
+| `vacinacao_mensal` | Doses por município, ano e mês |
+| `vacinacao_sexo` | Doses por município, ano e categoria de sexo |
+| `vacinacao_faixa_etaria` | Doses por município, ano e faixa etária |
+| `metadados_carga` | Assinatura das fontes, data da carga e versão do esquema |
+
+A camada de banco fica em `src/database/`: `conexao.py` define o caminho e o esquema; `carga.py` faz o ETL; `consultas_db.py` centraliza as consultas usadas pelo dashboard. Os testes de integração verificam a importação real das planilhas para um banco temporário.
+
 ## Convenções e cautelas analíticas
 
 - Brodowski é excluído das análises principais, seguindo o artigo, mas permanece disponível para auditoria quando os dados permitem.

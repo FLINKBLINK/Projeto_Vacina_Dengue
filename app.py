@@ -1,4 +1,5 @@
 from __future__ import annotations
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -115,7 +116,34 @@ if not vac.empty and not casos_brutos.empty:
         b.metric("p-valor", f"{resultado['p_value']:.3f}")
         c.metric("n de municípios", str(resultado["n"]))
         st.caption(resultado["interpretacao"])
-        st.plotly_chart(px.scatter(corr_df, x="doses", y="registros", text="municipio", labels={"doses": f"Doses registradas em {ano_doses_corr}", "registros": f"Registros SINAN em {ano_casos_corr}"}, title="Doses registradas versus registros SINAN por município"), use_container_width=True)
+        fig_corr = px.scatter(
+            corr_df,
+            x="doses",
+            y="registros",
+            text="municipio",
+            labels={
+                "doses": f"Doses registradas em {ano_doses_corr}",
+                "registros": f"Registros SINAN em {ano_casos_corr}",
+            },
+            title="Doses registradas versus registros SINAN por município",
+        )
+        # Inclui uma reta de tendência linear para tornar a relação visualmente explícita.
+        x_obs = corr_df["doses"].to_numpy(dtype=float)
+        y_obs = corr_df["registros"].to_numpy(dtype=float)
+        coeficientes = np.polyfit(x_obs, y_obs, 1)
+        x_linha = np.linspace(float(x_obs.min()), float(x_obs.max()), 100)
+        y_linha = np.polyval(coeficientes, x_linha)
+        fig_corr.add_scatter(
+            x=x_linha,
+            y=y_linha,
+            mode="lines",
+            name="Tendência linear",
+            line={"width": 3},
+            hovertemplate="Doses: %{x:,.0f}<br>Registros estimados: %{y:,.0f}<extra>Tendência linear</extra>",
+        )
+        fig_corr.update_traces(selector={"mode": "markers+text"}, textposition="top center")
+        fig_corr.update_layout(legend_title_text="Série")
+        st.plotly_chart(fig_corr, use_container_width=True)
     else:
         st.info("A correlação exige pelo menos três municípios com valores válidos e variação nas duas variáveis.")
 elif vac.empty:

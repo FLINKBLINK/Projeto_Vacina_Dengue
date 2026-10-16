@@ -9,6 +9,8 @@ from src.database.consultas_db import consultar_casos, consultar_populacao, cons
 from src.database.conexao import DB_PATH
 from src.analytics.indicadores import calcular_doses_por_100_habitantes
 from src.analytics.estatisticas import correlacao_pearson
+from src.analytics.indicadores import calcular_variacao_percentual
+from src.analytics.analises_artigo import construir_analises_artigo
 
 st.set_page_config(page_title="Vacina Dengue | Região de Ribeirão Preto", page_icon="🦟", layout="wide")
 st.title("Vacinação contra a dengue e registros da doença")
@@ -70,6 +72,21 @@ if casos_f["data_notificacao"].notna().any():
     st.plotly_chart(px.line(mensal, x="mes", y="registros", markers=True, labels={"mes": "Mês", "registros": "Registros"}, title="Registros por mês de notificação"), use_container_width=True)
     por_mun = casos_f.groupby("municipio", as_index=False).size().rename(columns={"size": "registros"})
     st.plotly_chart(px.bar(por_mun.sort_values("registros", ascending=False), x="municipio", y="registros", labels={"municipio": "Município", "registros": "Registros"}, title="Registros por município"), use_container_width=True)
+    # Resumos anuais e trimestrais para comparar com as visualizações descritas no artigo.
+    casos_com_data = casos_f.dropna(subset=["data_notificacao"]).copy()
+    casos_com_data["ano"] = casos_com_data["data_notificacao"].dt.year
+    resumo_anual = casos_com_data.groupby("ano").size().rename("registros").reset_index()
+    if not resumo_anual.empty:
+        st.markdown("**Resumo anual e variação percentual**")
+        resumo_anual = resumo_anual.sort_values("ano")
+        resumo_anual["variacao_percentual"] = resumo_anual["registros"].pct_change() * 100
+        st.dataframe(resumo_anual, use_container_width=True, hide_index=True)
+    casos_com_data["trimestre"] = casos_com_data["data_notificacao"].dt.to_period("Q").astype(str)
+    resumo_trimestral = casos_com_data.groupby("trimestre").size().rename("registros").reset_index()
+    if not resumo_trimestral.empty:
+        st.plotly_chart(px.bar(resumo_trimestral, x="trimestre", y="registros",
+                               labels={"trimestre": "Trimestre", "registros": "Registros SINAN"},
+                               title="Registros SINAN por trimestre"), use_container_width=True)
 else:
     st.info("Não há datas de notificação válidas para os filtros atuais.")
 
@@ -98,60 +115,60 @@ try:
 except Exception as exc:
     st.warning(f"A parte de vacinação não pôde ser calculada: {exc}")
 
-st.subheader("Correlação exploratória entre vacinação e registros")
-st.write("Selecione separadamente o ano das doses e o ano dos registros. Esta visualização é uma exploração transversal entre municípios; não reproduz, por si só, as três correlações de variação temporal do artigo.")
-if not vac.empty and not casos_brutos.empty:
-    anos_vac = sorted(int(a) for a in vac["ano"].dropna().unique())
-    anos_casos_corr = sorted(int(a) for a in casos_brutos["ano_data"].dropna().unique())
-    csel1, csel2 = st.columns(2)
-    ano_doses_corr = csel1.selectbox("Ano das doses", anos_vac, index=0 if 2024 in anos_vac else len(anos_vac)-1)
-    ano_casos_corr = csel2.selectbox("Ano da data de notificação", anos_casos_corr, index=0 if 2024 in anos_casos_corr else len(anos_casos_corr)-1)
-    doses_corr = vac[vac["ano"] == ano_doses_corr].groupby("municipio", as_index=False)["doses"].sum(min_count=1)
-    casos_corr = casos_brutos[(casos_brutos["ano_data"] == ano_casos_corr) & casos_brutos["municipio"].isin(municipios_filtro)].groupby("municipio", as_index=False).size().rename(columns={"size": "registros"})
-    corr_df = doses_corr.merge(casos_corr, on="municipio", how="inner").dropna(subset=["doses", "registros"])
-    if len(corr_df) >= 3 and corr_df["doses"].nunique() > 1 and corr_df["registros"].nunique() > 1:
-        resultado = correlacao_pearson(corr_df["doses"], corr_df["registros"])
-        a, b, c = st.columns(3)
-        a.metric("Pearson r", f"{resultado['r']:.3f}")
-        b.metric("p-valor", f"{resultado['p_value']:.3f}")
-        c.metric("n de municípios", str(resultado["n"]))
-        st.caption(resultado["interpretacao"])
-        fig_corr = px.scatter(
-            corr_df,
-            x="doses",
-            y="registros",
-            text="municipio",
-            labels={
-                "doses": f"Doses registradas em {ano_doses_corr}",
-                "registros": f"Registros SINAN em {ano_casos_corr}",
-            },
-            title="Doses registradas versus registros SINAN por município",
-        )
-        # Inclui uma reta de tendência linear para tornar a relação visualmente explícita.
-        x_obs = corr_df["doses"].to_numpy(dtype=float)
-        y_obs = corr_df["registros"].to_numpy(dtype=float)
-        coeficientes = np.polyfit(x_obs, y_obs, 1)
-        x_linha = np.linspace(float(x_obs.min()), float(x_obs.max()), 100)
-        y_linha = np.polyval(coeficientes, x_linha)
-        fig_corr.add_scatter(
-            x=x_linha,
-            y=y_linha,
-            mode="lines",
-            name="Tendência linear",
-            line={"width": 3},
-            hovertemplate="Doses: %{x:,.0f}<br>Registros estimados: %{y:,.0f}<extra>Tendência linear</extra>",
-        )
-        fig_corr.update_traces(selector={"mode": "markers+text"}, textposition="top center")
-        fig_corr.update_layout(legend_title_text="Série")
-        st.plotly_chart(fig_corr, use_container_width=True)
+st.subheader("Reprodução das três correlações do artigo")
+st.write("Esta seção segue os recortes descritos no artigo. Os cálculos usam registros SINAN disponíveis; como as planilhas não têm classificação final, eles não devem ser interpretados automaticamente como casos confirmados.")
+try:
+    analises_artigo = construir_analises_artigo(vac_banco, casos_brutos, populacao)
+    tabela_corr = analises_artigo["correlacoes"].copy()
+    tabela_corr = tabela_corr[["analise", "status", "n_municipios", "r", "p_value", "r_artigo", "p_artigo", "diferenca_r", "diferenca_p"]]
+    st.dataframe(tabela_corr, use_container_width=True, hide_index=True)
+    if not analises_artigo["tem_jan_mai_vacinacao_2025"]:
+        st.warning("A Correlação 3 não pode ser reproduzida integralmente: faltam dados de vacinação de maio de 2025. O resultado publicado é mostrado apenas como referência, não como resultado recalculado.")
     else:
-        st.info("A correlação exige pelo menos três municípios com valores válidos e variação nas duas variáveis.")
-elif vac.empty:
-    st.warning("Correlação não calculada: nenhuma dose mensal foi carregada do arquivo de vacinação. Confira a seção Vacinação e os cabeçalhos da planilha.")
-elif casos_brutos.empty:
-    st.warning("Correlação não calculada: não há registros SINAN carregados.")
-else:
-    st.info("Não foi possível calcular a correlação com os dados disponíveis. Confira os anos selecionados e se há pelo menos três municípios em comum com valores válidos e variação nas duas variáveis.")
+        st.caption("A Correlação 3 usa vacinação acumulada de janeiro de 2024 a maio de 2025 e registros SINAN de janeiro a maio de 2025.")
+
+    opcoes_corr = {
+        "Correlação 1 — doses 2024 × variação anual 2023–2024":
+            ("correlacao_1_dados", "taxa_doses_2024_pct", "variacao_2023_2024_pct"),
+        "Correlação 2 — doses 2024 × variação Jan–Mai 2023–2025":
+            ("correlacao_2_dados", "taxa_doses_2024_pct", "variacao_2023_2025_jan_mai_pct"),
+        "Correlação 3 — doses acumuladas × registros Jan–Mai 2025":
+            ("correlacao_3_dados", "taxa_doses_acumulada_pct", "registros_2025_jan_mai"),
+    }
+    escolha_corr = st.selectbox("Visualizar dispersão por análise", list(opcoes_corr))
+    chave_df, eixo_x, eixo_y = opcoes_corr[escolha_corr]
+    df_corr = analises_artigo[chave_df].dropna(subset=[eixo_x, eixo_y]).copy()
+    if escolha_corr.startswith("Correlação 3") and not analises_artigo["tem_jan_mai_vacinacao_2025"]:
+        st.info("Gráfico da Correlação 3 omitido para evitar apresentar dados parciais como se cobrissem janeiro–maio.")
+    elif len(df_corr) >= 3 and df_corr[eixo_x].nunique() > 1 and df_corr[eixo_y].nunique() > 1:
+        fig = px.scatter(df_corr, x=eixo_x, y=eixo_y, text="municipio",
+                         labels={eixo_x: eixo_x.replace("_", " "), eixo_y: eixo_y.replace("_", " ")},
+                         title=escolha_corr)
+        import numpy as np
+        x_obs = df_corr[eixo_x].to_numpy(dtype=float)
+        y_obs = df_corr[eixo_y].to_numpy(dtype=float)
+        coef = np.polyfit(x_obs, y_obs, 1)
+        x_linha = np.linspace(float(x_obs.min()), float(x_obs.max()), 100)
+        fig.add_scatter(x=x_linha, y=np.polyval(coef, x_linha), mode="lines",
+                        name="Tendência linear", line={"width": 3})
+        fig.update_traces(selector={"mode": "markers+text"}, textposition="top center")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Não há municípios suficientes com variação nos dois eixos para desenhar esta correlação.")
+
+    p_plot = tabela_corr[tabela_corr["p_value"].notna()][["analise", "p_value", "p_artigo"]].melt(
+        id_vars="analise", var_name="origem", value_name="p_value")
+    if not p_plot.empty:
+        p_plot["origem"] = p_plot["origem"].map({"p_value": "Calculado com as bases atuais", "p_artigo": "Publicado no artigo"})
+        fig_p = px.bar(p_plot, x="analise", y="p_value", color="origem", barmode="group",
+                       labels={"analise": "Análise", "p_value": "p-valor", "origem": "Referência"},
+                       title="Comparação dos p-valores calculados e publicados")
+        fig_p.add_hline(y=0.05, line_dash="dash", line_color="red",
+                        annotation_text="Limiar de significância (0,05)")
+        st.plotly_chart(fig_p, use_container_width=True)
+except Exception as exc:
+    st.error(f"Não foi possível reproduzir as análises do artigo: {exc}")
+    st.exception(exc)
 
 st.subheader("Qualidade e limitações dos dados")
 divergencias = casos_brutos[casos_brutos["diverge_ano_arquivo"]].copy()

@@ -66,7 +66,7 @@ A população residente deve ser agregada somente após carregar todas as págin
 
 A inspeção de 16/10/2026 mostrou que a consulta com `id_mn_resi=354340` retornou 100 linhas, mas os valores observados de `id_mn_resi` eram de outros municípios. Portanto, a API respondeu HTTP 200, porém a amostra indica que o parâmetro de residência pode estar sendo ignorado. Não usar esse parâmetro como filtro confiável sem nova validação.
 
-O script `scripts/diagnosticar_paginacao_sinan.py` foi criado para estimar o volume por paginação sem salvar registros nem imprimir dados pessoais. Ele consulta o ano inteiro sem filtro municipal, lê páginas de até 1.000 linhas e filtra localmente pelos seis primeiros dígitos de `id_mn_resi`, comparando com os dez municípios do projeto. O padrão limita a leitura a 10 páginas para evitar uma varredura nacional ilimitada.
+O script `scripts/diagnosticar_paginacao_sinan.py` foi criado para estimar o volume por paginação sem salvar registros nem imprimir dados pessoais. Ele consulta o ano inteiro sem filtro municipal, lê páginas de até 1.000 linhas e filtra localmente pelos seis primeiros dígitos de `id_mn_resi`, comparando com os dez municípios do projeto. O padrão limita a leitura a 10 páginas para evitar uma varredura nacional ilimitada. O Swagger do endpoint define `offset` como número da página (0, 1, 2...), não como quantidade de linhas a pular; o diagnóstico e o cliente ETL devem seguir essa semântica.
 
 Diagnóstico inicial (até 10 páginas):
 

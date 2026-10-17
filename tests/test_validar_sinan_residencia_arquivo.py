@@ -36,9 +36,9 @@ def test_agrega_residencia_notificador_sem_expor_linhas():
 
 def test_guatapara_nao_confunde_codigo_de_guarulhos():
     csv_text = (
-        "ID_MUNICIP;ID_MN_RESI;NU_ANO\\n"
-        "3518859;3518859;2024\\n"
-        "3518800;3518800;2024\\n"
+        "ID_MUNICIP;ID_MN_RESI;NU_ANO\n"
+        "3518859;3518859;2024\n"
+        "3518800;3518800;2024\n"
     )
     result = analisar_csv(io.StringIO(csv_text))
     assert result["por_municipio_residencia"]["Guatapará"] == 1

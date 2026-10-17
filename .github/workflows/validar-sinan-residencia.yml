@@ -1,0 +1,43 @@
+name: Validar SINAN por residência usando arquivo oficial
+
+on:
+  workflow_dispatch:
+    inputs:
+      ano:
+        description: "Ano da base SINAN"
+        required: true
+        type: choice
+        options:
+          - "2024"
+          - "2023"
+          - "2025"
+        default: "2024"
+
+permissions:
+  contents: read
+
+jobs:
+  validar-residencia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependência HTTP
+        run: python -m pip install requests
+      - name: Executar testes
+        run: python -m pytest tests/test_validar_sinan_residencia_arquivo.py -q
+      - name: Processar arquivo oficial e agregar por residência
+        run: |
+          python -m scripts.validar_sinan_residencia_arquivo --ano "${{ inputs.ano }}" | tee resumo-sinan-residencia.json
+      - name: Publicar somente resumo agregado
+        uses: actions/upload-artifact@v4
+        with:
+          name: resumo-sinan-residencia-${{ inputs.ano }}
+          path: resumo-sinan-residencia.json
+          if-no-files-found: error
+          retention-days: 14

@@ -98,7 +98,8 @@ def diagnosticar(ano: int, max_pages: int, page_size: int, pausa: float) -> dict
                     "nu_ano": str(ano),
                     "id_municip": codigo,
                     "limit": page_size,
-                    "offset": pagina,
+                    # A API usa offset como quantidade de registros a pular, não índice da página.
+                    "offset": pagina * page_size,
                 },
                 timeout=TIMEOUT,
             )
@@ -158,7 +159,7 @@ def diagnosticar(ano: int, max_pages: int, page_size: int, pausa: float) -> dict
         "fonte": "SINAN dengue",
         "ano": ano,
         "objetivo": "Comparar filtro por município notificador (id_municip) com município de residência (id_mn_resi).",
-        "parametros": {"page_size": page_size, "max_pages": max_pages, "offsets": "0, 1, 2..."},
+        "parametros": {"page_size": page_size, "max_pages": max_pages, "offsets": "0, page_size, 2*page_size..."},
         "dados_pessoais": "Nenhuma linha individual é impressa ou gravada; hashes usados apenas em memória.",
         "resultados_por_municipio_notificador": resultados,
         "observacao": "id_municip identifica município notificador, não residência; contagens não equivalem automaticamente a casos confirmados.",

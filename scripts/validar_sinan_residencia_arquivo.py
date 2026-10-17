@@ -53,11 +53,11 @@ def analisar_csv(stream: TextIO) -> dict:
         raise ValueError("CSV sem cabeçalho.")
     by_upper = {name.strip().upper(): name for name in reader.fieldnames if name}
     residence_col = next((by_upper[k] for k in ("ID_MN_RESI", "ID_MUN_RES", "CO_MUN_RES") if k in by_upper), None)
-    notifier_col = next((by_upper[k] for k in ("ID_MUNIC", "ID_MUN_NOT", "CO_MUN_NOT") if k in by_upper), None)
+    notifier_col = next((by_upper[k] for k in ("ID_MUNICIP", "ID_MUNIC", "ID_MUN_NOT", "CO_MUN_NOT") if k in by_upper), None)
     if not residence_col:
         raise ValueError("Não encontrei coluna de município de residência (ex.: ID_MN_RESI). Cabeçalhos: " + ", ".join(reader.fieldnames[:40]))
     if not notifier_col:
-        raise ValueError("Não encontrei coluna de município notificador (ex.: ID_MUNIC). Cabeçalhos: " + ", ".join(reader.fieldnames[:40]))
+        raise ValueError("Não encontrei coluna de município notificador (ex.: ID_MUNICIP). Cabeçalhos: " + ", ".join(reader.fieldnames[:40]))
 
     residence = Counter()
     notifier = Counter()
@@ -128,7 +128,7 @@ def executar(ano: int, timeout: int = 180) -> dict:
         "url_arquivo": url,
         "sha256_arquivo_zip": digest.hexdigest(),
         "arquivo_processado": members[0].filename,
-        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNIC.",
+        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNICIP.",
         "dados_pessoais": "Nenhuma linha individual é impressa ou persistida; só agregados e hash do arquivo.",
         **summary,
         "alertas": [

@@ -23,7 +23,7 @@ MUNICIPIOS = {
     "350560": "Barrinha",
     "350780": "Brodowski",
     "351310": "Cravinhos",
-    "351880": "Guatapará",
+    "351885": "Guatapará",  # IBGE 3518859; 3518800 corresponde a Guarulhos
     "352430": "Jardinópolis",
     "354020": "Pontal",
     "354090": "Pradópolis",

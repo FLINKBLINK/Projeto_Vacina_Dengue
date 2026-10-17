@@ -11,7 +11,7 @@ def test_normalizar_codigo_municipal():
 
 def test_agrega_residencia_notificador_sem_expor_linhas():
     csv_text = (
-        "ID_MUNIC;ID_MN_RESI;NU_ANO\n"
+        "ID_MUNICIP;ID_MN_RESI;NU_ANO\n"
         "354340;354340;2024\n"
         "354340;354020;2024\n"
         "354020;354020;2024\n"

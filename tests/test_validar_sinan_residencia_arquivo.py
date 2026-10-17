@@ -6,6 +6,9 @@ from scripts.validar_sinan_residencia_arquivo import analisar_csv, normalizar_co
 def test_normalizar_codigo_municipal():
     assert normalizar_codigo("354340") == "354340"
     assert normalizar_codigo("3543402") == "354340"
+    # Guatapará é 3518859 (prefixo SINAN 351885), não 3518800 (Guarulhos).
+    assert normalizar_codigo("3518859") == "351885"
+    assert normalizar_codigo("3518800") == "351880"
     assert normalizar_codigo("") is None
 
 
@@ -29,3 +32,14 @@ def test_agrega_residencia_notificador_sem_expor_linhas():
         {"notificador": "Ribeirão Preto", "residencia": "Pontal", "registros": 1},
         {"notificador": "Ribeirão Preto", "residencia": "Ribeirão Preto", "registros": 1},
     ]
+
+
+def test_guatapara_nao_confunde_codigo_de_guarulhos():
+    csv_text = (
+        "ID_MUNICIP;ID_MN_RESI;NU_ANO\n"
+        "3518859;3518859;2024\n"
+        "3518800;3518800;2024\n"
+    )
+    result = analisar_csv(io.StringIO(csv_text))
+    assert result["por_municipio_residencia"]["Guatapará"] == 1
+    assert result["por_municipio_notificador"]["Guatapará"] == 1

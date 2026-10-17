@@ -8,7 +8,7 @@ No GitHub Actions, execute **Validar SINAN por residência usando arquivo oficia
 
 Fonte de 2024: https://dadosabertos.saude.gov.br/dataset/arboviroses-dengue/resource/4cf2f7b8-9920-41b5-817a-1ffc13e0690c
 
-## O que comparar
+## Códigos municipais\n\nO código de Guatapará no IBGE é `3518859`, cujo prefixo de seis dígitos usado neste arquivo é `351885`. Não usar `351880`, que corresponde ao prefixo de Guarulhos (`3518800`). O teste automatizado cobre essa distinção para evitar que registros de Guarulhos sejam contabilizados como Guatapará.\n\n## O que comparar
 
 - `por_municipio_residencia`: total de registros cujo município de residência é um dos dez municípios estudados, independentemente do município notificador.
 - `por_municipio_notificador`: total de registros notificados por cada município estudado.

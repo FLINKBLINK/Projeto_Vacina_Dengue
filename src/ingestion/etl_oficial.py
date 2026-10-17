@@ -26,7 +26,7 @@ MUNICIPIOS_IBGE = {
     "3505601": "Barrinha",
     "3507805": "Brodowski",
     "3513108": "Cravinhos",
-    "3518800": "Guatapará",
+    "3518859": "Guatapará",
     "3524303": "Jardinópolis",
     "3540200": "Pontal",
     "3540903": "Pradópolis",
@@ -96,7 +96,7 @@ def iterar_paginas(
     session: requests.Session | None = None,
     pausa_segundos: float = 0.0,
 ) -> Iterable[list[dict[str, Any]]]:
-    """Percorre páginas usando offset=0, page_size, 2*page_size... até página curta."""
+    """Percorre páginas usando offset=0, 1, 2... até página curta, conforme Swagger."""
     if not 1 <= page_size <= 1000:
         raise ValueError("page_size deve estar entre 1 e 1000.")
     if max_pages is not None and max_pages < 1:
@@ -111,7 +111,7 @@ def iterar_paginas(
         yield rows
         if len(rows) < page_size or (max_pages is not None and paginas >= max_pages):
             break
-        offset += page_size
+        offset += 1
         if pausa_segundos:
             time.sleep(pausa_segundos)
 

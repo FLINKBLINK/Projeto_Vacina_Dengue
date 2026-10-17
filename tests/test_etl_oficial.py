@@ -26,13 +26,14 @@ def test_iterar_paginas_usa_offset_e_para_na_pagina_curta(monkeypatch):
 
     def fake(path, params=None, **kwargs):
         chamadas.append(params.copy())
-        offset = params["offset"]
-        return [{"id": i} for i in range(offset, min(offset + 2, 5))]
+        pagina = params["offset"]
+        inicio = pagina * 2
+        return [{"id": i} for i in range(inicio, min(inicio + 2, 5))]
 
     monkeypatch.setattr("src.ingestion.etl_oficial.consultar_pagina", fake)
     paginas = list(iterar_paginas("/endpoint", {"ano": 2025}, page_size=2))
     assert [len(p) for p in paginas] == [2, 2, 1]
-    assert [c["offset"] for c in chamadas] == [0, 2, 4]
+    assert [c["offset"] for c in chamadas] == [0, 1, 2]
 
 
 def test_carga_idempotente_filtra_municipios_fora_da_regiao():

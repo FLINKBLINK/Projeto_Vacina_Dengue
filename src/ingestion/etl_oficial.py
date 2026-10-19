@@ -275,6 +275,8 @@ def executar_extracao(
                         stats = carregar_registros(conn, fonte, page, ano_referencia=ano)
                         recebidos += stats["recebidos"]
                         regiao += stats["regiao"]
+                        if max_pages_por_consulta is not None and paginas >= max_pages_por_consulta:
+                            break
                 conn.execute(
                     """UPDATE oficiais_execucoes SET finalizado_em_utc=?, paginas=?,
                        registros_recebidos=?, registros_regiao=?, status='sucesso'

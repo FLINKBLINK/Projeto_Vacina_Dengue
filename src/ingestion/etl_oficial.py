@@ -96,7 +96,7 @@ def iterar_paginas(
     session: requests.Session | None = None,
     pausa_segundos: float = 0.0,
 ) -> Iterable[list[dict[str, Any]]]:
-    """Percorre páginas usando offset=0, 1, 2... até página curta, conforme Swagger."""
+    """Percorre registros em blocos: offset=0, page_size, 2*page_size... até página curta."""
     if not 1 <= page_size <= 1000:
         raise ValueError("page_size deve estar entre 1 e 1000.")
     if max_pages is not None and max_pages < 1:
@@ -111,7 +111,7 @@ def iterar_paginas(
         yield rows
         if len(rows) < page_size or (max_pages is not None and paginas >= max_pages):
             break
-        offset += 1
+        offset += page_size
         if pausa_segundos:
             time.sleep(pausa_segundos)
 

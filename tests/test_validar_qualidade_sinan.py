@@ -57,10 +57,12 @@ def test_detects_wrong_municipality_mapping_as_integrity_failure(tmp_path):
     assert report["contagens"]["municipio_codigo_divergente"] == 1
 
 
-def test_flags_classification_code_outside_reference_dictionary_without_dropping_row(tmp_path):
+def test_classification_code_8_is_counted_as_inconclusive_not_invalid(tmp_path):
     db = tmp_path / "test.db"
     _db(db, _record(CLASSI_FIN="8"))
     report = audit(str(db), 2024)
     assert report["status_integridade"] == "aprovado"
-    assert report["contagens"]["alertas_ano_e_dominio"]["valor_fora_dominio_CLASSI_FIN"] == 1
+    assert report["contagens"]["classi_fin_inconclusivo_codigo_8"] == 1
+    assert "valor_fora_dominio_CLASSI_FIN" not in report["contagens"]["alertas_ano_e_dominio"]
+    assert report["contagens"]["campos_categoricos"]["CLASSI_FIN"]["8"] == 1
     assert report["registros_analisados"] == 1

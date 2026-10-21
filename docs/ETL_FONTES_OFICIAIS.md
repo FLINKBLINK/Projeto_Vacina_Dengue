@@ -27,11 +27,15 @@ O workflow [Inspecionar esquema das APIs oficiais](https://github.com/FLINKBLINK
 
 ## Executar
 
-Teste curto, limitado a uma página por consulta:
+Teste curto da carga SINAN, usando somente um ano e um lote de até 1.000 registros regionais:
 
 ```bash
-python -m scripts.etl_fontes_oficiais --max-pages 1
+python -m scripts.etl_fontes_oficiais --db data/processed/etl_teste.db --anos-sinan 2024 --somente-sinan --max-pages 1
 ```
+
+**Atenção:** mesmo com `--max-pages 1`, o SINAN baixa o ZIP nacional completo do ano escolhido e lê o CSV até encontrar o primeiro lote de registros dos municípios-alvo. A opção limita os lotes gravados, não o tamanho do download. O ETL agora processa cada arquivo anual uma única vez, em vez de baixar o mesmo ZIP uma vez por município.
+
+Também é possível executar esse teste no GitHub sem configurar nada localmente: abra **Actions → Teste ETL SINAN para SQLite → Run workflow**, escolha o ano e inicie. O workflow usa um SQLite isolado, valida se as tabelas e registros foram criados e publica o arquivo `etl_github_test.db` como artefato por sete dias. O teste não altera o banco do dashboard nem os arquivos versionados.
 
 Carga paginada padrão de dengue e população para 2023–2025:
 

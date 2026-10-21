@@ -235,10 +235,11 @@ def executar_extracao(
         conn.execute("PRAGMA foreign_keys=ON")
         inicializar_tabelas_oficiais(conn)
         consultas: list[tuple[str, str, dict[str, Any], int]] = []
+        # O arquivo anual do SINAN é nacional e já é filtrado localmente por
+        # município de residência. Uma consulta por município baixaria o mesmo ZIP
+        # nacional repetidamente (10 vezes por ano).
         for ano in anos_sinan:
-            for codigo in MUNICIPIOS_IBGE:
-                consultas.append(("sinan_dengue", ENDPOINTS["sinan_dengue"],
-                                  {"nu_ano": str(ano), "id_municip": codigo[:-1]}, ano))
+            consultas.append(("sinan_dengue", ENDPOINTS["sinan_dengue"], {}, ano))
         for ano in anos_populacao:
             for codigo in MUNICIPIOS_IBGE:
                 consultas.append(("populacao", ENDPOINTS["populacao"],
@@ -305,14 +306,27 @@ def main() -> int:
     parser.add_argument("--db", default=os.getenv("DENGUE_DB_PATH", "data/processed/dengue.db"))
     parser.add_argument("--page-size", type=int, default=PAGE_SIZE)
     parser.add_argument("--max-pages", type=int, default=None,
-                        help="Limita páginas por consulta para teste; não usar para carga completa.")
+                        help="Limita lotes gravados por fonte; SINAN ainda baixa o ZIP anual completo.")
+    parser.add_argument("--anos-sinan", default="2023,2024,2025",
+                        help="Anos SINAN separados por vírgula (ex.: 2024).")
+    parser.add_argument("--somente-sinan", action="store_true",
+                        help="Executa apenas a extração anual do SINAN, sem população ou PNI.")
     parser.add_argument("--incluir-pni", action="store_true",
                         help="Extrai também PNI nacional (pode ser muito volumoso; não classifica vacina dengue).")
     parser.add_argument("--pausa", type=float, default=0.0, help="Pausa entre páginas, em segundos.")
     args = parser.parse_args()
+    try:
+        anos_sinan = tuple(int(item.strip()) for item in args.anos_sinan.split(",") if item.strip())
+    except ValueError as exc:
+        parser.error("--anos-sinan deve conter anos separados por vírgula, por exemplo 2024,2025.")
+    if not anos_sinan:
+        parser.error("Informe ao menos um ano em --anos-sinan.")
     resumo = executar_extracao(
-        args.db, incluir_pni=args.incluir_pni, page_size=args.page_size,
-        max_pages_por_consulta=args.max_pages, pausa_segundos=args.pausa,
+        args.db, anos_sinan=anos_sinan,
+        anos_populacao=() if args.somente_sinan else (2023, 2024, 2025),
+        incluir_pni=False if args.somente_sinan else args.incluir_pni,
+        page_size=args.page_size, max_pages_por_consulta=args.max_pages,
+        pausa_segundos=args.pausa,
     )
     print(json.dumps(resumo, ensure_ascii=False, indent=2))
     return 0

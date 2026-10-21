@@ -55,10 +55,12 @@ def iterar_csv_residencia(stream: TextIO, *, page_size: int = 1000) -> Iterable[
     if residence_col is None:
         raise ValueError("CSV do SINAN sem coluna de município de residência (ID_MN_RESI).")
     batch: list[dict[str, str]] = []
-    for row in reader:
+    for source_row_number, row in enumerate(reader, start=1):
         code = normalizar_codigo_residencia(row.get(residence_col))
         if code not in MUNICIPIOS_RESIDENCIA:
             continue
+        # Metadado determinístico do registro no CSV: distingue linhas idênticas.
+        row["_sinan_linha_fonte"] = str(source_row_number)
         # Padroniza um campo canônico para que o ETL não use acidentalmente ID_MUNICIP.
         row["id_mn_resi"] = code
         batch.append(row)

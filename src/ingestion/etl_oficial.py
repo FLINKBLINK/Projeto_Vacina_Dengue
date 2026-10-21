@@ -194,6 +194,13 @@ def carregar_registros(
         if codigo is None:
             continue
         regiao += 1
+        # No SINAN, linhas de origem idênticas continuam sendo ocorrências distintas.
+        source_line = row.get("_sinan_linha_fonte") if fonte == "sinan_dengue" else None
+        chave = (
+            f"{ano_referencia}:linha:{source_line}"
+            if source_line is not None
+            else _hash_registro(row)
+        )
         conn.execute(
             """INSERT INTO oficiais_registros
                (fonte, chave_registro, municipio_ibge, municipio, ano_referencia,
@@ -205,7 +212,7 @@ def carregar_registros(
                  ano_referencia=excluded.ano_referencia,
                  extraido_em_utc=excluded.extraido_em_utc,
                  registro_json=excluded.registro_json""",
-            (fonte, _hash_registro(row), codigo, MUNICIPIOS_IBGE[codigo],
+            (fonte, chave, codigo, MUNICIPIOS_IBGE[codigo],
              ano_referencia, extraido, _serializar(row)),
         )
     return {"recebidos": recebidos, "regiao": regiao}
@@ -258,10 +265,17 @@ def executar_extracao(
                 (fonte, inicio),
             )
             exec_id = cur.lastrowid
+            conn.commit()  # Preserva o histórico mesmo quando a carga falha.
             paginas = recebidos = regiao = 0
             try:
                 with conn:
                     if fonte == "sinan_dengue":
+                        # Cada arquivo anual é um snapshot. Substitui a carga do ano
+                        # em uma transação; em caso de erro, a carga anterior volta.
+                        conn.execute(
+                            "DELETE FROM oficiais_registros WHERE fonte=? AND ano_referencia=?",
+                            (fonte, ano),
+                        )
                         paginas_iter = iterar_sinan_arquivo(
                             ano, page_size=page_size, session=session
                         )
@@ -284,6 +298,7 @@ def executar_extracao(
                        WHERE id=?""",
                     (datetime.now(timezone.utc).isoformat(), paginas, recebidos, regiao, exec_id),
                 )
+                conn.commit()
             except Exception as exc:
                 conn.execute(
                     """UPDATE oficiais_execucoes SET finalizado_em_utc=?, paginas=?,
@@ -292,6 +307,7 @@ def executar_extracao(
                     (datetime.now(timezone.utc).isoformat(), paginas, recebidos, regiao,
                      f"{type(exc).__name__}: {exc}"[:1000], exec_id),
                 )
+                conn.commit()
                 raise
             resumo["fontes"].append({
                 "fonte": fonte, "ano": ano, "paginas": paginas,

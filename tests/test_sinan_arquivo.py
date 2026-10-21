@@ -1,4 +1,7 @@
 import io
+import sqlite3
+
+from src.ingestion.etl_oficial import carregar_registros, inicializar_tabelas_oficiais
 
 import pytest
 
@@ -32,3 +35,32 @@ def test_filtra_por_residencia_e_nao_por_notificador():
 def test_falha_se_nao_houver_coluna_de_residencia():
     with pytest.raises(ValueError, match="município de residência"):
         list(iterar_csv_residencia(io.StringIO("ID_MUNICIP;NU_ANO\n354340;2024\n")))
+
+
+def test_preserva_linhas_identicas_com_ordinais_de_fonte_distintos():
+    csv_text = (
+        "ID_MN_RESI;NU_ANO;CS_SEXO\n"
+        "354340;2024;F\n"
+        "354340;2024;F\n"
+    )
+    batches = list(iterar_csv_residencia(io.StringIO(csv_text), page_size=10))
+    rows = [row for batch in batches for row in batch]
+
+    assert len(rows) == 2
+    assert rows[0]["NU_ANO"] == rows[1]["NU_ANO"]
+    assert rows[0]["CS_SEXO"] == rows[1]["CS_SEXO"]
+    assert rows[0]["_sinan_linha_fonte"] == "1"
+    assert rows[1]["_sinan_linha_fonte"] == "2"
+
+    conn = sqlite3.connect(":memory:")
+    inicializar_tabelas_oficiais(conn)
+    stats = carregar_registros(conn, "sinan_dengue", rows, ano_referencia=2024)
+
+    assert stats == {"recebidos": 2, "regiao": 2}
+    assert conn.execute(
+        "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue'"
+    ).fetchone()[0] == 2
+    keys = [row[0] for row in conn.execute(
+        "SELECT chave_registro FROM oficiais_registros ORDER BY chave_registro"
+    )]
+    assert keys == ["2024:linha:1", "2024:linha:2"]

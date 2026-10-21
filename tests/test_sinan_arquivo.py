@@ -70,7 +70,7 @@ def test_preserva_linhas_identicas_com_ordinais_de_fonte_distintos():
 
 def test_iterar_sinan_arquivo_reutiliza_zip_local_sem_rede(tmp_path):
     archive_path = tmp_path / "sinan.zip"
-    csv_text = "ID_MN_RESI;NU_ANO;CS_SEXO\\n354340;2024;F\\n320530;2024;M\\n"
+    csv_text = "ID_MN_RESI;NU_ANO;CS_SEXO\n354340;2024;F\n320530;2024;M\n"
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("DENGBR24.csv", csv_text.encode("latin-1"))
 

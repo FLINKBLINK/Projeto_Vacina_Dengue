@@ -75,6 +75,7 @@ def audit(db_path: str, year: int) -> dict:
     years_notification = Counter()
     years_symptom = Counter()
     invalid_weeks = []
+    invalid_week_count = 0
     duplicate_fingerprints = Counter()
     invalid_json = 0
     municipality_code_mismatch = 0
@@ -183,7 +184,7 @@ def audit(db_path: str, year: int) -> dict:
             "campos_chave_vazios": dict(missing_required),
             "datas_invalidas_por_campo": dict(date_invalid),
             "inconsistencias_cronologicas": dict(chronology),
-            "semanas_epidemiologicas_invalidas_amostra_max20": len(invalid_weeks),
+            "semanas_epidemiologicas_invalidas": invalid_week_count,
             "grupos_de_conteudo_clinico_duplicado": len(duplicate_group_sizes),
             "linhas_nesses_grupos_duplicados": sum(duplicate_group_sizes),
             "municipio_codigo_divergente": municipality_code_mismatch,

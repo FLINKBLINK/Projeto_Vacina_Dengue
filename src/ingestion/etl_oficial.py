@@ -229,6 +229,7 @@ def executar_extracao(
     max_pages_por_consulta: int | None = None,
     session: requests.Session | None = None,
     pausa_segundos: float = 0.0,
+    sinan_zip: str | Path | None = None,
 ) -> dict[str, Any]:
     """Extrai fontes selecionadas e salva apenas registros da região em transações.
 
@@ -277,7 +278,8 @@ def executar_extracao(
                             (fonte, ano),
                         )
                         paginas_iter = iterar_sinan_arquivo(
-                            ano, page_size=page_size, session=session
+                            ano, page_size=page_size, session=session,
+                            archive_path=sinan_zip,
                         )
                     else:
                         paginas_iter = iterar_paginas(
@@ -327,6 +329,8 @@ def main() -> int:
                         help="Anos SINAN separados por vírgula (ex.: 2024).")
     parser.add_argument("--somente-sinan", action="store_true",
                         help="Executa apenas a extração anual do SINAN, sem população ou PNI.")
+    parser.add_argument("--sinan-zip", default=None,
+                        help="Caminho para ZIP oficial previamente baixado; permite reutilizar o mesmo snapshot na auditoria.")
     parser.add_argument("--incluir-pni", action="store_true",
                         help="Extrai também PNI nacional (pode ser muito volumoso; não classifica vacina dengue).")
     parser.add_argument("--pausa", type=float, default=0.0, help="Pausa entre páginas, em segundos.")
@@ -342,7 +346,7 @@ def main() -> int:
         anos_populacao=() if args.somente_sinan else (2023, 2024, 2025),
         incluir_pni=False if args.somente_sinan else args.incluir_pni,
         page_size=args.page_size, max_pages_por_consulta=args.max_pages,
-        pausa_segundos=args.pausa,
+        pausa_segundos=args.pausa, sinan_zip=args.sinan_zip,
     )
     print(json.dumps(resumo, ensure_ascii=False, indent=2))
     return 0

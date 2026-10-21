@@ -39,9 +39,9 @@ def test_falha_se_nao_houver_coluna_de_residencia():
 
 def test_preserva_linhas_identicas_com_ordinais_de_fonte_distintos():
     csv_text = (
-        "ID_MN_RESI;NU_ANO;CS_SEXO\\n"
-        "354340;2024;F\\n"
-        "354340;2024;F\\n"
+        "ID_MN_RESI;NU_ANO;CS_SEXO\n"
+        "354340;2024;F\n"
+        "354340;2024;F\n"
     )
     batches = list(iterar_csv_residencia(io.StringIO(csv_text), page_size=10))
     rows = [row for batch in batches for row in batch]

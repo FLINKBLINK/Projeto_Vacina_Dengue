@@ -1,0 +1,34 @@
+import io
+
+import pytest
+
+from src.ingestion.sinan_arquivo import iterar_csv_residencia, normalizar_codigo_residencia
+
+
+def test_normaliza_codigos_ibge_de_seis_e_sete_digitos():
+    assert normalizar_codigo_residencia("354340") == "354340"
+    assert normalizar_codigo_residencia("3543402") == "354340"
+    assert normalizar_codigo_residencia("3518859") == "351885"
+    assert normalizar_codigo_residencia("") is None
+    assert normalizar_codigo_residencia("320530") == "320530"
+
+
+def test_filtra_por_residencia_e_nao_por_notificador():
+    csv_text = (
+        "ID_MUNICIP;ID_MN_RESI;NU_ANO\n"
+        "354340;354340;2024\n"
+        "320530;354020;2024\n"
+        "354020;320530;2024\n"
+        "354020;3518859;2024\n"
+    )
+    batches = list(iterar_csv_residencia(io.StringIO(csv_text), page_size=2))
+    rows = [row for batch in batches for row in batch]
+    assert len(rows) == 3
+    assert [row["id_mn_resi"] for row in rows] == ["354340", "354020", "351885"]
+    # Linha notificada em Pontal mas residente fora da região é descartada.
+    assert all(row["id_mn_resi"] != "320530" for row in rows)
+
+
+def test_falha_se_nao_houver_coluna_de_residencia():
+    with pytest.raises(ValueError, match="município de residência"):
+        list(iterar_csv_residencia(io.StringIO("ID_MUNICIP;NU_ANO\n354340;2024\n")))

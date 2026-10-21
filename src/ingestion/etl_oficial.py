@@ -17,6 +17,8 @@ from typing import Any, Iterable
 
 import requests
 
+from src.ingestion.sinan_arquivo import iterar_sinan_arquivo
+
 API_BASE = "https://apidadosabertos.saude.gov.br"
 SWAGGER_URL = f"{API_BASE}/static/swagger.json"
 TIMEOUT_SECONDS = 60
@@ -136,7 +138,7 @@ def _campo(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
 
 
 def _codigo_municipio(row: dict[str, Any]) -> str | None:
-    value = _campo(row, ("cod_mun", "id_municip", "codigo_municipio", "codigo_ibge", "co_mun_res", "co_mun_not", "co_mun_paciente", "codigo_municipio_estabelecimento", "codigo_municipio_paciente", "municipio_codigo"))
+    value = _campo(row, ("id_mn_resi", "ID_MN_RESI", "cod_mun", "id_municip", "codigo_municipio", "codigo_ibge", "co_mun_res", "co_mun_not", "co_mun_paciente", "codigo_municipio_estabelecimento", "codigo_municipio_paciente", "municipio_codigo"))
     if value is None:
         return None
     digits = "".join(ch for ch in str(value) if ch.isdigit())
@@ -258,15 +260,23 @@ def executar_extracao(
             paginas = recebidos = regiao = 0
             try:
                 with conn:
-                    for page in iterar_paginas(
-                        endpoint, filtros, page_size=page_size,
-                        max_pages=max_pages_por_consulta, session=session,
-                        pausa_segundos=pausa_segundos,
-                    ):
+                    if fonte == "sinan_dengue":
+                        paginas_iter = iterar_sinan_arquivo(
+                            ano, page_size=page_size, session=session
+                        )
+                    else:
+                        paginas_iter = iterar_paginas(
+                            endpoint, filtros, page_size=page_size,
+                            max_pages=max_pages_por_consulta, session=session,
+                            pausa_segundos=pausa_segundos,
+                        )
+                    for page in paginas_iter:
                         paginas += 1
                         stats = carregar_registros(conn, fonte, page, ano_referencia=ano)
                         recebidos += stats["recebidos"]
                         regiao += stats["regiao"]
+                        if max_pages_por_consulta is not None and paginas >= max_pages_por_consulta:
+                            break
                 conn.execute(
                     """UPDATE oficiais_execucoes SET finalizado_em_utc=?, paginas=?,
                        registros_recebidos=?, registros_regiao=?, status='sucesso'

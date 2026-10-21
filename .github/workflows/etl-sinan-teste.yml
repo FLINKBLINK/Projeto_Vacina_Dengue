@@ -69,6 +69,14 @@ jobs:
           --db data/processed/etl_github_test.db
           --output "data/processed/auditoria_sinan_${{ inputs.ano }}.json"
 
+      - name: Validar qualidade semântica dos registros SINAN
+        if: inputs.modo == 'carga_completa'
+        run: >-
+          python -m scripts.validar_qualidade_sinan
+          --year "${{ inputs.ano }}"
+          --db data/processed/etl_github_test.db
+          --output "data/processed/qualidade_sinan_${{ inputs.ano }}.json"
+
       - name: Validar banco SQLite gerado
         run: |
           python - <<'PY'
@@ -109,5 +117,6 @@ jobs:
           path: |
             data/processed/etl_github_test.db
             data/processed/auditoria_sinan_${{ inputs.ano }}.json
+            data/processed/qualidade_sinan_${{ inputs.ano }}.json
           if-no-files-found: warn
           retention-days: 7

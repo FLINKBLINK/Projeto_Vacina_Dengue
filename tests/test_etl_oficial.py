@@ -6,6 +6,7 @@ from src.ingestion.etl_oficial import (
     ErroETLOficial,
     _lista_registros,
     carregar_registros,
+    executar_extracao,
     inicializar_tabelas_oficiais,
     iterar_paginas,
 )
@@ -57,3 +58,36 @@ def test_tabela_legada_nao_e_substituida():
     tabelas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert "registros_sinan" in tabelas
     assert "oficiais_registros" in tabelas
+
+def test_extracao_sinan_processa_arquivo_nacional_uma_vez_por_ano(tmp_path, monkeypatch):
+    chamadas = []
+
+    def fake_iterar(ano, *, page_size=1000, session=None):
+        chamadas.append(ano)
+        yield [{
+            "id_mn_resi": "354340",
+            "dt_notific": f"{ano}-01-01",
+            "nu_notific": "teste",
+        }]
+
+    monkeypatch.setattr("src.ingestion.etl_oficial.iterar_sinan_arquivo", fake_iterar)
+    db = tmp_path / "etl_teste.db"
+    resumo = executar_extracao(
+        db,
+        anos_sinan=(2024,),
+        anos_populacao=(),
+        page_size=1000,
+        max_pages_por_consulta=1,
+    )
+
+    assert chamadas == [2024]
+    assert len(resumo["fontes"]) == 1
+    assert resumo["fontes"][0]["fonte"] == "sinan_dengue"
+    with sqlite3.connect(db) as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue'"
+        ).fetchone()[0] == 1
+        assert conn.execute(
+            "SELECT COUNT(*) FROM oficiais_execucoes WHERE fonte='sinan_dengue' AND status='sucesso'"
+        ).fetchone()[0] == 1
+

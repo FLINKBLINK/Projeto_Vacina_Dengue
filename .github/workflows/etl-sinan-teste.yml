@@ -52,6 +52,16 @@ jobs:
           --page-size 1000
           --max-pages 1
 
+      - name: Baixar snapshot imutável do ZIP oficial
+        if: inputs.modo == 'carga_completa'
+        run: |
+          year2="${{ inputs.ano }}"
+          year2="${year2:2:2}"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR${year2}.csv.zip" \
+            --output /tmp/sinan_oficial.zip
+          sha256sum /tmp/sinan_oficial.zip | tee data/processed/sha256_sinan_${{ inputs.ano }}.txt
+
       - name: Executar carga completa anual em SQLite isolado
         if: inputs.modo == 'carga_completa'
         run: >-
@@ -60,6 +70,7 @@ jobs:
           --anos-sinan "${{ inputs.ano }}"
           --somente-sinan
           --page-size 1000
+          --sinan-zip /tmp/sinan_oficial.zip
 
       - name: Auditar SQLite contra o CSV oficial bruto
         if: inputs.modo == 'carga_completa'
@@ -68,6 +79,7 @@ jobs:
           --year "${{ inputs.ano }}"
           --db data/processed/etl_github_test.db
           --output "data/processed/auditoria_sinan_${{ inputs.ano }}.json"
+          --zip /tmp/sinan_oficial.zip
 
       - name: Validar qualidade semântica dos registros SINAN
         if: inputs.modo == 'carga_completa'
@@ -118,5 +130,6 @@ jobs:
             data/processed/etl_github_test.db
             data/processed/auditoria_sinan_${{ inputs.ano }}.json
             data/processed/qualidade_sinan_${{ inputs.ano }}.json
+            data/processed/sha256_sinan_${{ inputs.ano }}.txt
           if-no-files-found: warn
           retention-days: 7

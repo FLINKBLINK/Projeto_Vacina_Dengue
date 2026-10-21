@@ -31,8 +31,23 @@ DATE_ORDER_RULES = (
     ("investigacao_antes_notificacao", "DT_INVEST", "DT_NOTIFIC", "less"),
     ("encerramento_antes_investigacao", "DT_ENCERRA", "DT_INVEST", "less"),
     ("encerramento_antes_notificacao", "DT_ENCERRA", "DT_NOTIFIC", "less"),
-    ("obito_antes_notificacao", "DT_OBITO", "DT_NOTIFIC", "less"),
+    ("obito_antes_inicio_sintomas", "DT_OBITO", "DT_SIN_PRI", "less"),
+    ("coleta_ns1_antes_inicio_sintomas", "DT_NS1", "DT_SIN_PRI", "less"),
+    ("coleta_pcr_antes_inicio_sintomas", "DT_PCR", "DT_SIN_PRI", "less"),
+    ("coleta_soro_antes_inicio_sintomas", "DT_SORO", "DT_SIN_PRI", "less"),
+    ("coleta_prnt_antes_inicio_sintomas", "DT_PRNT", "DT_SIN_PRI", "less"),
+    ("coleta_viral_antes_inicio_sintomas", "DT_VIRAL", "DT_SIN_PRI", "less"),
 )
+# Domínios documentados no dicionário SINAN Online de Dengue/Chikungunya.
+# Como o PDF disponível é de 2015, valores divergentes são alertas para revisão,
+# não falhas automáticas nem motivo para descartar registros.
+DOMAINS = {
+    "CLASSI_FIN": {"5", "10", "11", "12", "13"},
+    "EVOLUCAO": {"1", "2", "3", "4", "9"},
+    "CS_SEXO": {"M", "F", "I"},
+    "CRITERIO": {"1", "2", "3"},
+}
+DICIONARIO_URL = "https://portalsinan.saude.gov.br/images/documentos/Agravos/Dengue/DIC_DADOS_ONLINE.pdf"
 
 def _value(value):
     return str(value or "").strip()
@@ -60,8 +75,7 @@ def audit(db_path: str, year: int) -> dict:
     if not rows:
         raise ValueError(f"Nenhum registro SINAN encontrado para {year}.")
 
-    category_fields = ("ID_AGRAVO", "CLASSI_FIN", "EVOLUCAO", "CS_SEXO",
-                       "CRITERIO", "NU_ANO", "SEM_PRI", "TP_NOT", "EVOLUCAO")
+    category_fields = ("ID_AGRAVO", "CLASSI_FIN", "EVOLUCAO", "CS_SEXO", "CRITERIO", "NU_ANO", "SEM_PRI", "TP_NOT")
     categories = {field: Counter() for field in category_fields}
     missing_required = Counter()
     date_invalid = Counter()
@@ -96,6 +110,13 @@ def audit(db_path: str, year: int) -> dict:
                 missing_required[field] += 1
         for field in category_fields:
             categories[field][_value(record.get(field)) or "(vazio)"] += 1
+        for field, allowed in DOMAINS.items():
+            value = _value(record.get(field))
+            if value and value not in allowed:
+                issue_counts["valor_fora_dominio_" + field] += 1
+                example_key = "valor_fora_dominio_" + field
+                if len(issue_examples.get(example_key, [])) < 10:
+                    issue_examples.setdefault(example_key, []).append({"chave": key, "valor": value})
 
         if _value(record.get("ID_AGRAVO")) != "A90":
             issue_counts["agravo_diferente_A90"] += 1
@@ -172,6 +193,8 @@ def audit(db_path: str, year: int) -> dict:
                       or duplicate_group_sizes or issue_counts or invalid_json)
     report = {
         "fonte": "SINAN/Dengue — validação semântica dos registros SQLite",
+        "dicionario_referencia": DICIONARIO_URL,
+        "versao_dicionario_referencia": "SINAN Online Dengue/Chikungunya revisado em 21/10/2015; confirmar compatibilidade com layout do CSV 2024",
         "ano_arquivo": year,
         "auditado_em_utc": datetime.now(timezone.utc).isoformat(),
         "registros_analisados": len(rows),
@@ -197,6 +220,7 @@ def audit(db_path: str, year: int) -> dict:
             "inconsistencias_cronologicas": chronology_examples,
             "datas_invalidas": {k: v for k, v in issue_examples.items() if k.startswith("data_invalida_")},
             "NU_ANO_diferente_arquivo": issue_examples.get("nu_ano_diferente_arquivo", []),
+            "valores_fora_dominio": {k: v for k, v in issue_examples.items() if k.startswith("valor_fora_dominio_")},
             "municipio_codigo_divergente": code_mismatch_examples,
             "semanas_invalidas": invalid_weeks,
         },

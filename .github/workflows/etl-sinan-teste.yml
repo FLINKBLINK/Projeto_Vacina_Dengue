@@ -61,6 +61,14 @@ jobs:
           --somente-sinan
           --page-size 1000
 
+      - name: Auditar SQLite contra o CSV oficial bruto
+        if: inputs.modo == 'carga_completa'
+        run: >-
+          python -m scripts.auditar_sinan_origem
+          --year "${{ inputs.ano }}"
+          --db data/processed/etl_github_test.db
+          --output "data/processed/auditoria_sinan_${{ inputs.ano }}.json"
+
       - name: Validar banco SQLite gerado
         run: |
           python - <<'PY'
@@ -93,11 +101,13 @@ jobs:
                     f"linhas regionais esperadas={esperado}; {execucoes} execução(ões) bem-sucedida(s).")
           PY
 
-      - name: Publicar banco SQLite como artefato
+      - name: Publicar banco SQLite e relatório de auditoria
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: etl-sinan-${{ inputs.modo }}-${{ inputs.ano }}
-          path: data/processed/etl_github_test.db
+          path: |
+            data/processed/etl_github_test.db
+            data/processed/auditoria_sinan_${{ inputs.ano }}.json
           if-no-files-found: warn
           retention-days: 7

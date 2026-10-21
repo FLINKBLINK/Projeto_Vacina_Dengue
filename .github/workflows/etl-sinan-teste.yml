@@ -55,6 +55,7 @@ jobs:
       - name: Baixar snapshot imutável do ZIP oficial
         if: inputs.modo == 'carga_completa'
         run: |
+          mkdir -p data/processed
           year2="${{ inputs.ano }}"
           year2="${year2:2:2}"
           curl --fail --location --retry 3 --retry-delay 2 \

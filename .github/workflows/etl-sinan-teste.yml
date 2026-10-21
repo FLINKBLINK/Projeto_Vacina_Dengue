@@ -78,12 +78,19 @@ jobs:
                   "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue' AND ano_referencia = ?",
                   ("${{ inputs.ano }}",)
               ).fetchone()[0]
+              esperado = conn.execute(
+                  "SELECT registros_regiao FROM oficiais_execucoes WHERE fonte='sinan_dengue' AND status='sucesso' ORDER BY id DESC LIMIT 1"
+              ).fetchone()[0]
               execucoes = conn.execute(
                   "SELECT COUNT(*) FROM oficiais_execucoes WHERE fonte='sinan_dengue' AND status='sucesso'"
               ).fetchone()[0]
               assert registros > 0, "Nenhum registro SINAN foi carregado."
+              assert registros == esperado, (
+                  f"Perda de linhas: banco tem {registros}, ETL identificou {esperado} linhas regionais."
+              )
               assert execucoes == 1, f"Esperada uma execução anual bem-sucedida; encontrei {execucoes}."
-              print(f"SQLite validado: {registros} registros SINAN de ${{ inputs.ano }}; {execucoes} execução(ões) bem-sucedida(s).")
+              print(f"SQLite validado: {registros} registros SINAN de ${{ inputs.ano }}; "
+                    f"linhas regionais esperadas={esperado}; {execucoes} execução(ões) bem-sucedida(s).")
           PY
 
       - name: Publicar banco SQLite como artefato

@@ -1,11 +1,12 @@
 import io
 import sqlite3
+import zipfile
 
 from src.ingestion.etl_oficial import carregar_registros, inicializar_tabelas_oficiais
 
 import pytest
 
-from src.ingestion.sinan_arquivo import iterar_csv_residencia, normalizar_codigo_residencia
+from src.ingestion.sinan_arquivo import iterar_csv_residencia, iterar_sinan_arquivo, normalizar_codigo_residencia
 
 
 def test_normaliza_codigos_ibge_de_seis_e_sete_digitos():
@@ -64,3 +65,18 @@ def test_preserva_linhas_identicas_com_ordinais_de_fonte_distintos():
         "SELECT chave_registro FROM oficiais_registros ORDER BY chave_registro"
     )]
     assert keys == ["2024:linha:1", "2024:linha:2"]
+
+
+
+def test_iterar_sinan_arquivo_reutiliza_zip_local_sem_rede(tmp_path):
+    archive_path = tmp_path / "sinan.zip"
+    csv_text = "ID_MN_RESI;NU_ANO;CS_SEXO\\n354340;2024;F\\n320530;2024;M\\n"
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("DENGBR24.csv", csv_text.encode("latin-1"))
+
+    batches = list(iterar_sinan_arquivo(2024, page_size=10, archive_path=archive_path))
+    rows = [row for batch in batches for row in batch]
+
+    assert len(rows) == 1
+    assert rows[0]["id_mn_resi"] == "354340"
+    assert rows[0]["_sinan_linha_fonte"] == "1"

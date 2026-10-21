@@ -12,6 +12,14 @@ on:
           - "2024"
           - "2025"
         default: "2024"
+      modo:
+        description: "Tipo de execução"
+        required: true
+        type: choice
+        options:
+          - amostra
+          - carga_completa
+        default: amostra
 
 permissions:
   contents: read
@@ -34,7 +42,8 @@ jobs:
       - name: Instalar dependência do ETL
         run: python -m pip install --upgrade pip requests
 
-      - name: Executar extração de teste para banco isolado
+      - name: Executar amostra limitada em SQLite isolado
+        if: inputs.modo == 'amostra'
         run: >-
           python -m scripts.etl_fontes_oficiais
           --db data/processed/etl_github_test.db
@@ -42,6 +51,15 @@ jobs:
           --somente-sinan
           --page-size 1000
           --max-pages 1
+
+      - name: Executar carga completa anual em SQLite isolado
+        if: inputs.modo == 'carga_completa'
+        run: >-
+          python -m scripts.etl_fontes_oficiais
+          --db data/processed/etl_github_test.db
+          --anos-sinan "${{ inputs.ano }}"
+          --somente-sinan
+          --page-size 1000
 
       - name: Validar banco SQLite gerado
         run: |
@@ -57,21 +75,22 @@ jobs:
               )}
               assert {"oficiais_registros", "oficiais_execucoes"} <= tables, tables
               registros = conn.execute(
-                  "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue'"
+                  "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue' AND ano_referencia = ?",
+                  ("${{ inputs.ano }}",)
               ).fetchone()[0]
               execucoes = conn.execute(
                   "SELECT COUNT(*) FROM oficiais_execucoes WHERE fonte='sinan_dengue' AND status='sucesso'"
               ).fetchone()[0]
               assert registros > 0, "Nenhum registro SINAN foi carregado."
               assert execucoes == 1, f"Esperada uma execução anual bem-sucedida; encontrei {execucoes}."
-              print(f"SQLite validado: {registros} registros SINAN; {execucoes} execução(ões) bem-sucedida(s).")
+              print(f"SQLite validado: {registros} registros SINAN de ${{ inputs.ano }}; {execucoes} execução(ões) bem-sucedida(s).")
           PY
 
-      - name: Publicar banco SQLite de teste como artefato
+      - name: Publicar banco SQLite como artefato
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: etl-sinan-sqlite-${{ inputs.ano }}
+          name: etl-sinan-${{ inputs.modo }}-${{ inputs.ano }}
           path: data/processed/etl_github_test.db
           if-no-files-found: warn
           retention-days: 7

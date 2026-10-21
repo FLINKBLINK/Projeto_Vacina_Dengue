@@ -26,13 +26,13 @@ O artifact original da execução está no [GitHub Actions run 39648119475](http
 | Início de sintomas em 2023 | 87 | Pode refletir início anterior à notificação; manter e documentar |
 | `CLASSI_FIN` vazio | 34 | Dado ausente; revisar dicionário e regra de análise |
 | `EVOLUCAO` vazio | 2.744 | Dado ausente; não inferir desfecho |
-| `CLASSI_FIN=8` | 1.326 | Fora dos valores listados no dicionário SINAN Online de 2015; confirmar compatibilidade com o layout/versão dos microdados 2024 |
+| `CLASSI_FIN=8` | 1.326 | Classificação inconclusiva documentada em referências técnicas da série histórica; preservar como inconclusivo, nunca como confirmado |
 | Investigação anterior à notificação | 1 | Verificar regra temporal do dicionário |
 | Encerramento anterior à investigação | 1 | Verificar cronologia do registro |
 | Óbito anterior à notificação | 7 no diagnóstico preliminar | Não é, por si só, prova de erro; comparar com início dos sintomas e regras oficiais |
 | Grupos de linhas com conteúdo clínico igual após remover metadados de extração | 37 grupos (74 linhas nesses grupos) | Preservar linhas; investigar se são duplicatas de origem ou notificações distintas |
 
-Os resultados de campos ausentes e códigos devem ser interpretados segundo o dicionário vigente para o arquivo específico. O [dicionário SINAN Online de Dengue/Chikungunya](https://portalsinan.saude.gov.br/images/documentos/Agravos/Dengue/DIC_DADOS_ONLINE.pdf), revisado em 21/10/2015, lista `CLASSI_FIN` como 5 (descartado), 10 (dengue), 11 (dengue com sinais de alarme), 12 (dengue grave) e 13 (chikungunya), e `EVOLUCAO` como 1, 2, 3, 4 ou 9. Por ser uma referência de 2015, a ausência do código 8 nela é um **alerta para investigação**, não autorização para alterar o dado nem concluir automaticamente que a fonte está errada.
+Os resultados de campos ausentes e códigos devem ser interpretados segundo o dicionário vigente para o arquivo específico. O [dicionário SINAN Online de Dengue/Chikungunya](https://portalsinan.saude.gov.br/images/documentos/Agravos/Dengue/DIC_DADOS_ONLINE.pdf), revisado em 21/10/2015, lista `CLASSI_FIN` como 5 (descartado), 10 (dengue), 11 (dengue com sinais de alarme), 12 (dengue grave) e 13 (chikungunya), e `EVOLUCAO` como 1, 2, 3, 4 ou 9. Embora esse dicionário não liste o código 8, referências técnicas da série histórica o documentam como **inconclusivo** ([microdatasus](https://rdrr.io/cran/microdatasus/src/R/process_sinan_dengue.R); [estudo técnico](https://repositorio.ufc.br/bitstream/riufc/69186/1/2016_tese_gssousa.pdf)). O validador passa a reconhecer o código 8 como categoria inconclusiva conhecida e a contá-lo explicitamente, sem tratá-lo como caso confirmado nem apagar registros. A classificação deve continuar separada de casos confirmados nas análises.
 
 ## Critérios de uso
 
@@ -45,6 +45,6 @@ Os resultados de campos ausentes e códigos devem ser interpretados segundo o di
 ## Próximas etapas
 
 - Executar `scripts/validar_qualidade_sinan.py` no workflow de carga completa e arquivar `qualidade_sinan_2024.json`.
-- Conferir a documentação oficial mais recente do layout nacional CSV 2024 e resolver o significado de `CLASSI_FIN=8`.
+- Conferir se a documentação mais recente do layout nacional CSV 2024 acrescenta orientações específicas para `CLASSI_FIN=8`; o código já é reconhecido como inconclusivo pela referência técnica da série histórica.
 - Repetir a carga e as auditorias para 2023 e 2025; não generalizar a aprovação de 2024 para outros anos.
 - Avaliar se a reconciliação de origem pode compartilhar a mesma cópia imutável do ZIP com a carga, evitando comparação de snapshots diferentes.

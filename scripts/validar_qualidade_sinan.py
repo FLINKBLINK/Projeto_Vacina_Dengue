@@ -156,6 +156,7 @@ def audit(db_path: str, year: int) -> dict:
 
         week = _value(record.get("SEM_PRI"))
         if week and (not re.fullmatch(r"\d{6}", week) or not 1 <= int(week[-2:]) <= 53):
+            invalid_week_count += 1
             if len(invalid_weeks) < 20:
                 invalid_weeks.append({"chave": key, "SEM_PRI": week})
 

@@ -62,7 +62,7 @@ def test_tabela_legada_nao_e_substituida():
 def test_extracao_sinan_processa_arquivo_nacional_uma_vez_por_ano(tmp_path, monkeypatch):
     chamadas = []
 
-    def fake_iterar(ano, *, page_size=1000, session=None):
+    def fake_iterar(ano, *, page_size=1000, session=None, archive_path=None):
         chamadas.append(ano)
         yield [{
             "id_mn_resi": "354340",

@@ -39,12 +39,17 @@ def main() -> int:
     parser.add_argument("--year", type=int, required=True)
     parser.add_argument("--db", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--zip", dest="zip_path", default=None,
+                        help="ZIP oficial já usado pelo ETL, para garantir auditoria do mesmo snapshot.")
     args = parser.parse_args()
 
     url = URL.format(year2=str(args.year)[-2:])
-    request = urllib.request.Request(url, headers={"User-Agent": "Projeto-Vacina-Dengue/1.0 (etl-auditoria)", "Accept": "application/zip"})
-    with urllib.request.urlopen(request, timeout=240) as response:
-        archive_bytes = response.read()
+    if args.zip_path:
+        archive_bytes = Path(args.zip_path).read_bytes()
+    else:
+        request = urllib.request.Request(url, headers={"User-Agent": "Projeto-Vacina-Dengue/1.0 (etl-auditoria)", "Accept": "application/zip"})
+        with urllib.request.urlopen(request, timeout=240) as response:
+            archive_bytes = response.read()
 
     zip_sha256 = hashlib.sha256(archive_bytes).hexdigest()
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
@@ -122,7 +127,8 @@ def main() -> int:
         "primeiras_chaves_nao_encontradas": unexpected_keys[:20],
         "municipios": municipality_report,
         "status": "aprovado" if not missing_keys and not unexpected_keys and all(x["status"] == "ok" for x in municipality_report) else "divergencia",
-        "observacao": "O ZIP foi baixado novamente para auditoria independente. Se a fonte for atualizada entre a execução do ETL e esta auditoria, divergências de hash/linhas de origem devem ser interpretadas como snapshots diferentes e a execução deve ser repetida com uma única cópia imutável do ZIP.",
+        "modo_snapshot": "arquivo_compartilhado" if args.zip_path else "download_independente",
+        "observacao": "Quando --zip é informado, o ETL e a auditoria devem usar a mesma cópia do ZIP. Sem esse parâmetro, a auditoria baixa uma cópia independente e pode encontrar snapshot diferente.",
     }
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

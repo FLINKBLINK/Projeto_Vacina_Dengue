@@ -77,27 +77,35 @@ def iterar_sinan_arquivo(
     page_size: int = 1000,
     session: requests.Session | None = None,
     timeout: int = 180,
+    archive_path: str | Path | None = None,
 ) -> Iterable[list[dict[str, str]]]:
     """Baixa e processa o ZIP anual oficial; só emite linhas dos municípios-alvo."""
     if not 2000 <= ano <= 2026:
         raise ValueError("Ano fora do intervalo esperado (2000–2026).")
     url = URL_TEMPLATE.format(ano2=str(ano)[-2:])
     client = session or requests
-    with tempfile.TemporaryDirectory(prefix="sinan-etl-") as tmp:
-        archive = Path(tmp) / "sinan.zip"
-        with client.get(
-            url, stream=True, timeout=(20, timeout),
-            headers={"User-Agent": USER_AGENT, "Accept": "application/zip"},
-        ) as response:
+    if archive_path is not None:
+        with zipfile.ZipFile(archive_path) as zf:
+            members = [info for info in zf.infolist() if not info.is_dir() and info.filename.lower().endswith('.csv')]
+            if len(members) != 1:
+                raise ValueError(f'Esperava exatamente um CSV no ZIP; encontrei {len(members)}.')
+            with zf.open(members[0]) as raw:
+                text = io.TextIOWrapper(raw, encoding='latin-1', newline='')
+                yield from iterar_csv_residencia(text, page_size=page_size)
+        return
+    with tempfile.TemporaryDirectory(prefix='sinan-etl-') as tmp:
+        archive = Path(tmp) / 'sinan.zip'
+        with client.get(url, stream=True, timeout=(20, timeout),
+                        headers={'User-Agent': USER_AGENT, 'Accept': 'application/zip'}) as response:
             response.raise_for_status()
-            with archive.open("wb") as out:
+            with archive.open('wb') as out:
                 for chunk in response.iter_content(chunk_size=1024 * 1024):
                     if chunk:
                         out.write(chunk)
         with zipfile.ZipFile(archive) as zf:
-            members = [info for info in zf.infolist() if not info.is_dir() and info.filename.lower().endswith(".csv")]
+            members = [info for info in zf.infolist() if not info.is_dir() and info.filename.lower().endswith('.csv')]
             if len(members) != 1:
-                raise ValueError(f"Esperava exatamente um CSV no ZIP; encontrei {len(members)}.")
+                raise ValueError(f'Esperava exatamente um CSV no ZIP; encontrei {len(members)}.')
             with zf.open(members[0]) as raw:
-                text = io.TextIOWrapper(raw, encoding="latin-1", newline="")
+                text = io.TextIOWrapper(raw, encoding='latin-1', newline='')
                 yield from iterar_csv_residencia(text, page_size=page_size)

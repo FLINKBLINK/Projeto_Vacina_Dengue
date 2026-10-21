@@ -91,3 +91,35 @@ def test_extracao_sinan_processa_arquivo_nacional_uma_vez_por_ano(tmp_path, monk
             "SELECT COUNT(*) FROM oficiais_execucoes WHERE fonte='sinan_dengue' AND status='sucesso'"
         ).fetchone()[0] == 1
 
+
+
+def test_mapeamento_ibge_dos_dez_municipios_do_projeto():
+    from src.ingestion.etl_oficial import MUNICIPIOS_IBGE, _codigo_municipio
+
+    esperados = {
+        "3505601": "Barrinha",
+        "3507805": "Brodowski",
+        "3513108": "Cravinhos",
+        "3518859": "Guatapará",
+        "3524303": "Jardinópolis",
+        "3540200": "Pontal",
+        "3540903": "Pradópolis",
+        "3543402": "Ribeirão Preto",
+        "3551504": "Serrana",
+        "3551702": "Sertãozinho",
+    }
+    assert MUNICIPIOS_IBGE == esperados
+
+    for codigo, municipio in esperados.items():
+        assert _codigo_municipio({"id_mn_resi": codigo}) == codigo
+        assert _codigo_municipio({"id_mn_resi": codigo[:6]}) == codigo
+        assert MUNICIPIOS_IBGE[codigo] == municipio
+
+
+def test_codigo_de_municipio_fora_da_regiao_nao_e_mapeado():
+    from src.ingestion.etl_oficial import _codigo_municipio
+
+    # 3518800 é Guarulhos; não pode ser confundido com Guatapará (3518859).
+    assert _codigo_municipio({"id_mn_resi": "3518800"}) is None
+    assert _codigo_municipio({"id_mn_resi": "351880"}) is None
+    assert _codigo_municipio({"id_mn_resi": "320530"}) is None

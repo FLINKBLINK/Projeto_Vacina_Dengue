@@ -38,16 +38,26 @@ DATE_ORDER_RULES = (
     ("coleta_prnt_antes_inicio_sintomas", "DT_PRNT", "DT_SIN_PRI", "less"),
     ("coleta_viral_antes_inicio_sintomas", "DT_VIRAL", "DT_SIN_PRI", "less"),
 )
-# Domínios documentados no dicionário SINAN Online de Dengue/Chikungunya.
-# Como o PDF disponível é de 2015, valores divergentes são alertas para revisão,
-# não falhas automáticas nem motivo para descartar registros.
+# Domínios de referência para SINAN Online Dengue/Chikungunya.
+# O dicionário oficial de 2015 lista 5, 10, 11, 12 e 13; referências técnicas
+# da série histórica também documentam CLASSI_FIN=8 como "Inconclusivo".
+# O código 8 é reconhecido para evitar falso positivo, mas nunca equivale a caso
+# confirmado. Registros são preservados e a categoria fica explicitamente contada.
 DOMAINS = {
-    "CLASSI_FIN": {"5", "10", "11", "12", "13"},
+    "CLASSI_FIN": {"5", "8", "10", "11", "12", "13"},
     "EVOLUCAO": {"1", "2", "3", "4", "9"},
     "CS_SEXO": {"M", "F", "I"},
     "CRITERIO": {"1", "2", "3"},
 }
 DICIONARIO_URL = "https://portalsinan.saude.gov.br/images/documentos/Agravos/Dengue/DIC_DADOS_ONLINE.pdf"
+CLASSI_FIN_DESCRICOES = {
+    "5": "Descartado",
+    "8": "Inconclusivo (código documentado na série histórica)",
+    "10": "Dengue",
+    "11": "Dengue com sinais de alarme",
+    "12": "Dengue grave",
+    "13": "Chikungunya",
+}
 
 def _value(value):
     return str(value or "").strip()
@@ -205,6 +215,8 @@ def audit(db_path: str, year: int) -> dict:
             "ano_notificacao": dict(sorted(years_notification.items())),
             "ano_inicio_sintomas": dict(sorted(years_symptom.items())),
             "campos_categoricos": {k: dict(sorted(v.items())) for k, v in categories.items()},
+            "classi_fin_descricoes_referencia": CLASSI_FIN_DESCRICOES,
+            "classi_fin_inconclusivo_codigo_8": categories["CLASSI_FIN"]["8"],
             "campos_chave_vazios": dict(missing_required),
             "datas_invalidas_por_campo": dict(date_invalid),
             "inconsistencias_cronologicas": dict(chronology),

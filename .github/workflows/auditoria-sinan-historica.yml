@@ -1,0 +1,148 @@
+name: Auditoria histórica consolidada SINAN
+
+on:
+  workflow_dispatch:
+    inputs:
+      page_size:
+        description: "Tamanho dos lotes de leitura do arquivo oficial"
+        required: true
+        type: choice
+        options:
+          - "500"
+          - "1000"
+        default: "1000"
+
+permissions:
+  contents: read
+
+jobs:
+  auditoria-historica-sinan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Instalar dependências
+        run: python -m pip install --upgrade pip requests
+
+      - name: Preparar diretório de artefatos
+        run: mkdir -p data/processed
+
+      - name: Carregar snapshots oficiais de 2023, 2024 e 2025
+        env:
+          PAGE_SIZE: ${{ inputs.page_size }}
+        run: |
+          set -euo pipefail
+          for year in 2023 2024 2025; do
+            year2="${year:2:2}"
+            zip_path="/tmp/sinan_${year}.zip"
+            url="https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR${year2}.csv.zip"
+
+            echo "Baixando snapshot SINAN ${year}"
+            curl --fail --location --retry 3 --retry-delay 2 "$url" --output "$zip_path"
+            sha256sum "$zip_path" | awk '{print $1}' > "data/processed/sha256_sinan_${year}.txt"
+
+            echo "Carregando SINAN ${year} no banco consolidado"
+            python -m scripts.etl_fontes_oficiais \
+              --db data/processed/sinan_historico.db \
+              --anos-sinan "$year" \
+              --somente-sinan \
+              --page-size "$PAGE_SIZE" \
+              --sinan-zip "$zip_path"
+
+            echo "Auditando integridade da origem ${year}"
+            python -m scripts.auditar_sinan_origem \
+              --year "$year" \
+              --db data/processed/sinan_historico.db \
+              --output "data/processed/auditoria_sinan_${year}.json" \
+              --zip "$zip_path"
+
+            echo "Auditando qualidade semântica ${year}"
+            python -m scripts.validar_qualidade_sinan \
+              --year "$year" \
+              --db data/processed/sinan_historico.db \
+              --output "data/processed/qualidade_sinan_${year}.json"
+          done
+
+      - name: Auditar consistência temporal entre os anos
+        run: |
+          python -m scripts.auditar_sinan_entre_anos \
+            --db data/processed/sinan_historico.db \
+            --years 2023,2024,2025 \
+            --output data/processed/auditoria_sinan_entre_anos.json
+
+      - name: Validar reconciliação consolidada do SQLite
+        run: |
+          python - <<'PY'
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          db = Path("data/processed/sinan_historico.db")
+          assert db.exists() and db.stat().st_size > 0, "Banco SQLite não foi criado."
+          expected_years = {2023: 19076, 2024: 60846, 2025: 39368}
+          with sqlite3.connect(db) as conn:
+              for year, expected in expected_years.items():
+                  count = conn.execute(
+                      "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue' AND ano_referencia=?",
+                      (year,),
+                  ).fetchone()[0]
+                  assert count == expected, (
+                      f"Contagem divergente em {year}: SQLite={count}; "
+                      f"referência dos snapshots validados={expected}"
+                  )
+                  audit_path = Path(f"data/processed/auditoria_sinan_{year}.json")
+                  audit = json.loads(audit_path.read_text(encoding="utf-8"))
+                  assert audit.get("status") == "aprovado", (
+                      f"Auditoria de origem não aprovada para {year}: {audit.get('status')}"
+                  )
+                  quality_path = Path(f"data/processed/qualidade_sinan_{year}.json")
+                  quality = json.loads(quality_path.read_text(encoding="utf-8"))
+                  assert quality.get("status_integridade") == "aprovado", (
+                      f"Integridade semântica/estrutural não aprovada em {year}"
+                  )
+                  print(f"{year}: {count} registros SQLite; auditoria de origem aprovada; "
+                        f"integridade={quality.get('status_integridade')}; "
+                        f"semântica={quality.get('status_semantico')}")
+
+          cross_path = Path("data/processed/auditoria_sinan_entre_anos.json")
+          cross = json.loads(cross_path.read_text(encoding="utf-8"))
+          assert cross.get("json_invalidos") == 0, (
+              f"JSON inválidos no relatório temporal: {cross.get('json_invalidos')}"
+          )
+          assert cross.get("registros_por_ano") == {
+              "2023": 19076, "2024": 60846, "2025": 39368
+          }, f"Contagens divergentes no relatório temporal: {cross.get('registros_por_ano')}"
+          print("Total histórico validado: 119290 registros.")
+          print(f"NU_ANO divergente: {cross.get('registros_com_NU_ANO_divergente')}")
+          print("Grupos de assinatura clínica em múltiplos anos: "
+                f"{cross.get('grupos_assinatura_clinica_presentes_em_multiplos_anos')}")
+          PY
+
+      - name: Publicar banco e relatórios consolidados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sinan-auditoria-historica-consolidada
+          path: |
+            data/processed/sinan_historico.db
+            data/processed/auditoria_sinan_2023.json
+            data/processed/auditoria_sinan_2024.json
+            data/processed/auditoria_sinan_2025.json
+            data/processed/qualidade_sinan_2023.json
+            data/processed/qualidade_sinan_2024.json
+            data/processed/qualidade_sinan_2025.json
+            data/processed/auditoria_sinan_entre_anos.json
+            data/processed/sha256_sinan_2023.txt
+            data/processed/sha256_sinan_2024.txt
+            data/processed/sha256_sinan_2025.txt
+          if-no-files-found: warn
+          retention-days: 14

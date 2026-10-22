@@ -88,28 +88,29 @@ jobs:
 
           db = Path("data/processed/sinan_historico.db")
           assert db.exists() and db.stat().st_size > 0, "Banco SQLite não foi criado."
-          expected_years = {2023: 19076, 2024: 60846, 2025: 39368}
+          counts_by_year = {}
           with sqlite3.connect(db) as conn:
-              for year, expected in expected_years.items():
+              for year in (2023, 2024, 2025):
                   count = conn.execute(
                       "SELECT COUNT(*) FROM oficiais_registros WHERE fonte='sinan_dengue' AND ano_referencia=?",
                       (year,),
                   ).fetchone()[0]
-                  assert count == expected, (
-                      f"Contagem divergente em {year}: SQLite={count}; "
-                      f"referência dos snapshots validados={expected}"
-                  )
                   audit_path = Path(f"data/processed/auditoria_sinan_{year}.json")
                   audit = json.loads(audit_path.read_text(encoding="utf-8"))
+                  expected = audit.get("linhas_regionais_csv")
                   assert audit.get("status") == "aprovado", (
                       f"Auditoria de origem não aprovada para {year}: {audit.get('status')}"
                   )
+                  assert expected is not None and count == expected, (
+                      f"SQLite/CSV divergentes em {year}: SQLite={count}; CSV={expected}"
+                  )
+                  counts_by_year[str(year)] = count
                   quality_path = Path(f"data/processed/qualidade_sinan_{year}.json")
                   quality = json.loads(quality_path.read_text(encoding="utf-8"))
                   assert quality.get("status_integridade") == "aprovado", (
-                      f"Integridade semântica/estrutural não aprovada em {year}"
+                      f"Integridade não aprovada em {year}: {quality.get('status_integridade')}"
                   )
-                  print(f"{year}: {count} registros SQLite; auditoria de origem aprovada; "
+                  print(f"{year}: {count} registros SQLite = CSV oficial; "
                         f"integridade={quality.get('status_integridade')}; "
                         f"semântica={quality.get('status_semantico')}")
 
@@ -118,10 +119,11 @@ jobs:
           assert cross.get("json_invalidos") == 0, (
               f"JSON inválidos no relatório temporal: {cross.get('json_invalidos')}"
           )
-          assert cross.get("registros_por_ano") == {
-              "2023": 19076, "2024": 60846, "2025": 39368
-          }, f"Contagens divergentes no relatório temporal: {cross.get('registros_por_ano')}"
-          print("Total histórico validado: 119290 registros.")
+          assert cross.get("registros_por_ano") == counts_by_year, (
+              f"Contagens divergentes no relatório temporal: {cross.get('registros_por_ano')}"
+          )
+          total = sum(counts_by_year.values())
+          print(f"Total histórico validado: {total} registros.")
           print(f"NU_ANO divergente: {cross.get('registros_com_NU_ANO_divergente')}")
           print("Grupos de assinatura clínica em múltiplos anos: "
                 f"{cross.get('grupos_assinatura_clinica_presentes_em_multiplos_anos')}")

@@ -21,7 +21,7 @@ def test_previous_year_at_year_end_is_transition_review():
     row = _row("ano_notificacao_diferente_arquivo", 2025, "2024-12-31", "2024-12-29", 2024)
     result = classify(row)
     assert result["categoria_temporal"] == "transicao_fim_ano_anterior"
-    assert "não" not in result["criterio_classificacao"].lower() or "não correção" in result["criterio_classificacao"].lower()
+    assert "Janela" in result["criterio_classificacao"] or "Data entre" in result["criterio_classificacao"]
 
 
 def test_following_year_outside_january_window_is_flagged():

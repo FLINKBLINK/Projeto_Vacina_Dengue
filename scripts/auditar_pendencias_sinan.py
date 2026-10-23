@@ -11,7 +11,7 @@ import hashlib
 import json
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 DATE_RULES = (
@@ -164,7 +164,6 @@ def audit_pending(db_path: str, years: tuple[int, ...]) -> tuple[dict, list[dict
             duplicate_groups = [group for group in fingerprints.values() if len(group) > 1]
             summary["grupos_conteudo_clinico_repetido_por_ano"][str(year)] = len(duplicate_groups)
             for group in duplicate_groups:
-                digest = _fingerprint({k: v for k, v in json.loads("{}").items()})
                 # The rows share the same complete clinical payload; only output the source key and review fields.
                 for item in group:
                     pending.append({**item, "tipo_pendencia": "conteudo_clinico_repetido",

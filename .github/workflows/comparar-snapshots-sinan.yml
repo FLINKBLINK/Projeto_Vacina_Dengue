@@ -1,0 +1,58 @@
+name: Comparar snapshots oficiais SINAN 2024-2026
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/auditar_snapshots_sinan.py"
+      - "tests/test_auditar_snapshots_sinan.py"
+      - ".github/workflows/comparar-snapshots-sinan.yml"
+permissions:
+  contents: read
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install --upgrade pip pytest
+      - run: python -m pytest -q tests/test_auditar_snapshots_sinan.py
+  comparar:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Baixar snapshots oficiais
+        run: |
+          mkdir -p data/snapshots-sinan reports/snapshots-sinan
+          curl --fail --location --retry 3 --retry-delay 5 "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR24.csv.zip" --output data/snapshots-sinan/DENGBR24.csv.zip
+          curl --fail --location --retry 3 --retry-delay 5 "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR25.csv.zip" --output data/snapshots-sinan/DENGBR25.csv.zip
+          curl --fail --location --retry 3 --retry-delay 5 "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR26.csv.zip" --output data/snapshots-sinan/DENGBR26.csv.zip
+          sha256sum data/snapshots-sinan/*.zip | tee reports/snapshots-sinan/sha256_snapshots.txt
+      - name: Validar arquivos ZIP
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          for path in sorted(Path("data/snapshots-sinan").glob("*.zip")):
+              with zipfile.ZipFile(path) as z:
+                  bad=z.testzip()
+                  if bad: raise SystemExit(f"ZIP corrompido: {path} -> {bad}")
+                  print(f"{path.name}: OK; entradas={len(z.namelist())}")
+          PY
+      - name: Comparar sem alterar registros
+        run: |
+          python scripts/auditar_snapshots_sinan.py --zip-2024 data/snapshots-sinan/DENGBR24.csv.zip --zip-2025 data/snapshots-sinan/DENGBR25.csv.zip --zip-2026 data/snapshots-sinan/DENGBR26.csv.zip --output-dir reports/snapshots-sinan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: comparacao-snapshots-sinan-2024-2026
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            reports/snapshots-sinan/comparacao_snapshots_sinan.json
+            reports/snapshots-sinan/correspondencias_snapshots_sinan.csv
+            reports/snapshots-sinan/comparacao_snapshots.sqlite
+            reports/snapshots-sinan/sha256_snapshots.txt

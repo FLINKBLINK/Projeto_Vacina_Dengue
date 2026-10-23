@@ -1,5 +1,5 @@
 import csv, io, sqlite3, zipfile
-from scripts.auditar_snapshots_sinan import compare, read_snapshot
+from scripts.auditar_snapshots_sinan import audit_2025_targets_against_2026, compare, read_snapshot
 
 FIELDS=["ID_AGRAVO","ID_MN_RESI","DT_NOTIFIC","DT_SIN_PRI","CS_SEXO","NU_IDADE_N","SEM_PRI","CLASSI_FIN","CRITERIO","EVOLUCAO","OBS"]
 def make_zip(path, rows):
@@ -22,3 +22,15 @@ def test_clinical_signature_matches_changed_snapshot_but_exact_does_not(tmp_path
     assert found[(2025,2026,"assinatura_clinica")]["ocorrencias_correspondentes_minimas"]==1
     assert found[(2025,2026,"correspondencia_exata")]["hashes_compartilhados"]==0
     assert details
+
+
+def test_target_audit_finds_2025_record_in_2026_with_looser_signature(tmp_path):
+    p2025=tmp_path/"2025.zip"; p2026=tmp_path/"2026.zip"
+    target=row(OBS="updated", NU_ANO="2026")
+    current=row(OBS="changed again", NU_ANO="2026")
+    make_zip(p2025,[target]); make_zip(p2026,[current])
+    summary,details=audit_2025_targets_against_2026(p2025,p2026)
+    assert summary["registros_alvo_2025"] == 1
+    assert summary["camadas_de_correspondencia"]["residencia_notificacao_sintomas_sexo_idade"]["registros_alvo_com_alguma_correspondencia"] == 1
+    assert len(details) == 1
+    assert "OBS" not in details[0]

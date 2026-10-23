@@ -79,6 +79,13 @@ jobs:
             --years 2023,2024,2025 \
             --output data/processed/auditoria_sinan_entre_anos.json
 
+      - name: Detalhar pendências semânticas para revisão
+        run: |
+          python -m scripts.auditar_pendencias_sinan \
+            --db data/processed/sinan_historico.db \
+            --years 2023,2024,2025 \
+            --output-dir data/processed
+
       - name: Validar reconciliação consolidada do SQLite
         run: |
           python - <<'PY'
@@ -143,6 +150,8 @@ jobs:
             data/processed/qualidade_sinan_2024.json
             data/processed/qualidade_sinan_2025.json
             data/processed/auditoria_sinan_entre_anos.json
+            data/processed/pendencias_semanticas_sinan.json
+            data/processed/pendencias_semanticas_sinan.csv
             data/processed/sha256_sinan_2023.txt
             data/processed/sha256_sinan_2024.txt
             data/processed/sha256_sinan_2025.txt

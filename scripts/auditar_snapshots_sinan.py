@@ -177,6 +177,13 @@ def with_month_keys(record: dict[str, str]) -> dict[str, str]:
     return enriched
 
 
+def signature_hash(record: dict[str, str], fields: tuple[str, ...]) -> str | None:
+    """Retorna hash somente quando todos os campos discriminantes estão preenchidos."""
+    if any(not norm(record.get(field, "")) for field in fields):
+        return None
+    return digest_fields(record, fields)
+
+
 def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[dict, list[dict]]:
     """Compara alvos 2025 contra 2026 com camadas exatas e exploratórias; não identifica pessoas."""
     target_rows = []
@@ -208,6 +215,23 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
         "residencia_sexo_idade_notificacao_ano_mes": (
             "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N", "DT_NOTIFIC_ANO_MES"
         ),
+        "residencia_sexo_idade_notificacao_sintomas_ano_mes": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N",
+            "DT_NOTIFIC_ANO_MES", "DT_SIN_PRI_ANO_MES"
+        ),
+        "residencia_sexo_idade_datas_semana": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N",
+            "DT_NOTIFIC_ANO_MES", "DT_SIN_PRI_ANO_MES", "SEM_PRI"
+        ),
+        "residencia_sexo_idade_datas_classificacao": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N",
+            "DT_NOTIFIC_ANO_MES", "DT_SIN_PRI_ANO_MES", "CLASSI_FIN", "CRITERIO"
+        ),
+        "residencia_sexo_idade_datas_classificacao_desfecho": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N",
+            "DT_NOTIFIC_ANO_MES", "DT_SIN_PRI_ANO_MES",
+            "CLASSI_FIN", "CRITERIO", "EVOLUCAO"
+        ),
     }
     indexes = {name: Counter() for name in levels}
     fields_2026 = []
@@ -217,7 +241,9 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
         rows_2026 += 1
         enriched = with_month_keys(record)
         for name, key_fields in levels.items():
-            indexes[name][digest_fields(enriched, key_fields)] += 1
+            key = signature_hash(enriched, key_fields)
+            if key is not None:
+                indexes[name][key] += 1
 
     detail = []
     for record in target_rows:
@@ -230,12 +256,16 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
             "ano_dt_sin_pri": ",".join(sorted(years_in(record.get("DT_SIN_PRI", "")))),
         }
         for name, key_fields in levels.items():
-            row[name + "_matches_2026"] = indexes[name][digest_fields(record, key_fields)]
+            key = signature_hash(record, key_fields)
+            row[name + "_matches_2026"] = indexes[name][key] if key is not None else 0
         detail.append(row)
 
     layers = {}
     for name, key_fields in levels.items():
-        matching_counts = [indexes[name][digest_fields(record, key_fields)] for record in target_rows]
+        matching_counts = [
+            indexes[name][key] if (key := signature_hash(record, key_fields)) is not None else 0
+            for record in target_rows
+        ]
         layers[name] = {
             "campos": list(key_fields),
             "registros_alvo_com_alguma_correspondencia": sum(count > 0 for count in matching_counts),

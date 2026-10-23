@@ -53,15 +53,12 @@ def classify(row: dict) -> dict | None:
 
     category = "revisao_manual"
     rationale = "A divergência não se enquadra na janela heurística de virada do ano."
-    if field_year is not None and field_year < snapshot_year and parsed and parsed.month == 12 and parsed.day >= 25:
+    if field_year is not None and field_year > snapshot_year:
+        category = "ano_posterior_ao_snapshot"
+        rationale = "O ano da data/campo é posterior ao ano nominal do arquivo, inclusive quando próximo à virada; verificar período coberto e atualização do arquivo de origem."
+    elif field_year is not None and field_year < snapshot_year and parsed and parsed.month == 12 and parsed.day >= 25:
         category = "transicao_fim_ano_anterior"
         rationale = "Data entre 25 e 31 de dezembro do ano anterior ao snapshot; plausível transição de ano, requer validação da definição temporal."
-    elif field_year is not None and field_year > snapshot_year and parsed and parsed.month == 1 and parsed.day <= 7:
-        category = "transicao_inicio_ano_seguinte"
-        rationale = "Data entre 1 e 7 de janeiro após o ano do snapshot; plausível transição de ano, requer validação."
-    elif field_year is not None and field_year > snapshot_year:
-        category = "ano_posterior_ao_snapshot"
-        rationale = "O ano da data/campo é posterior ao ano nominal do arquivo; verificar período coberto e atualização do arquivo de origem."
     elif field_year is not None and field_year < snapshot_year:
         category = "ano_anterior_fora_da_janela_de_virada"
         rationale = "A data/campo pertence a ano anterior e não está na janela heurística de fim de ano."
@@ -87,7 +84,7 @@ def build_report(input_csv: str) -> tuple[dict, list[dict]]:
     by_municipality = Counter((row["ano_arquivo"], row["categoria_temporal"], row["municipio"]) for row in classified)
     summary = {
         "fonte": "SINAN/Dengue — classificação investigativa de pendências temporais",
-        "regra": "Heurística de triagem, não correção nem decisão epidemiológica. Janela de virada definida provisoriamente como 25–31/dezembro e 1–7/janeiro.",
+        "regra": "Heurística de triagem, não correção nem decisão epidemiológica. Janela heurística de transição para o ano anterior definida provisoriamente como 25–31/dezembro. Datas posteriores ao ano nominal são sempre destacadas separadamente.",
         "ocorrencias_temporais_classificadas": len(classified),
         "observacao": "As ocorrências não equivalem necessariamente a registros únicos: um registro pode gerar alertas para mais de um campo. Nenhum dado original é alterado.",
         "por_categoria": dict(sorted(by_category.items())),

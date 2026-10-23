@@ -54,5 +54,5 @@ jobs:
           path: |
             reports/snapshots-sinan/comparacao_snapshots_sinan.json
             reports/snapshots-sinan/correspondencias_snapshots_sinan.csv
-            reports/snapshots-sinan/comparacao_snapshots.sqlite
+            reports/snapshots-sinan/alvos_2025_contra_2026.csv
             reports/snapshots-sinan/sha256_snapshots.txt

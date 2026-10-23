@@ -86,6 +86,12 @@ jobs:
             --years 2023,2024,2025 \
             --output-dir data/processed
 
+      - name: Classificar pendências temporais para revisão
+        run: |
+          python -m scripts.resumir_pendencias_temporais_sinan \
+            --input-csv data/processed/pendencias_semanticas_sinan.csv \
+            --output-dir data/processed
+
       - name: Validar reconciliação consolidada do SQLite
         run: |
           python - <<'PY'
@@ -152,6 +158,8 @@ jobs:
             data/processed/auditoria_sinan_entre_anos.json
             data/processed/pendencias_semanticas_sinan.json
             data/processed/pendencias_semanticas_sinan.csv
+            data/processed/classificacao_temporal_sinan.json
+            data/processed/classificacao_temporal_sinan.csv
             data/processed/sha256_sinan_2023.txt
             data/processed/sha256_sinan_2024.txt
             data/processed/sha256_sinan_2025.txt

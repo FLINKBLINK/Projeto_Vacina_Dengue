@@ -1,7 +1,7 @@
 import csv, io, sqlite3, zipfile
 from scripts.auditar_snapshots_sinan import audit_2025_targets_against_2026, compare, read_snapshot
 
-FIELDS=["ID_AGRAVO","ID_MN_RESI","DT_NOTIFIC","DT_SIN_PRI","CS_SEXO","NU_IDADE_N","SEM_PRI","CLASSI_FIN","CRITERIO","EVOLUCAO","OBS"]
+FIELDS=["ID_AGRAVO","ID_MN_RESI","DT_NOTIFIC","DT_SIN_PRI","CS_SEXO","NU_IDADE_N","SEM_PRI","CLASSI_FIN","CRITERIO","EVOLUCAO","OBS","NU_ANO"]
 def make_zip(path, rows):
     with zipfile.ZipFile(path,"w",zipfile.ZIP_DEFLATED) as z:
         buffer=io.StringIO(newline=""); writer=csv.DictWriter(buffer,fieldnames=FIELDS); writer.writeheader(); writer.writerows(rows)

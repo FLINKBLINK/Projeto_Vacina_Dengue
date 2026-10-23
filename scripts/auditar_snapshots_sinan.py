@@ -154,8 +154,31 @@ def years_in(value: str) -> set[str]:
     return set(re.findall(r"20\d{2}", value or ""))
 
 
+def year_month(value: str) -> str:
+    """Normaliza datas comuns do SINAN para AAAA-MM, sem inferir dia ou data ausente."""
+    value = norm(value)
+    match = re.search(r"(20\d{2})[-/.]?(\d{2})", value)
+    if match:
+        month = int(match.group(2))
+        if 1 <= month <= 12:
+            return f"{match.group(1)}-{month:02d}"
+    match = re.search(r"\d{2}[-/.](\d{2})[-/.](20\d{2})", value)
+    if match:
+        month = int(match.group(1))
+        if 1 <= month <= 12:
+            return f"{match.group(2)}-{month:02d}"
+    return ""
+
+
+def with_month_keys(record: dict[str, str]) -> dict[str, str]:
+    enriched = dict(record)
+    enriched["DT_SIN_PRI_ANO_MES"] = year_month(record.get("DT_SIN_PRI", ""))
+    enriched["DT_NOTIFIC_ANO_MES"] = year_month(record.get("DT_NOTIFIC", ""))
+    return enriched
+
+
 def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[dict, list[dict]]:
-    """Procura sobreposições dos registros 2025 com datas/ano de 2026 usando chaves progressivamente menos restritivas."""
+    """Compara alvos 2025 contra 2026 com camadas exatas e exploratórias; não identifica pessoas."""
     target_rows = []
     fields_2025 = []
     for fields, record in iter_snapshot_records(path_2025):
@@ -163,7 +186,7 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
         if ("2026" in record.get("NU_ANO", "")
                 or "2026" in years_in(record.get("DT_NOTIFIC", ""))
                 or "2026" in years_in(record.get("DT_SIN_PRI", ""))):
-            target_rows.append(record)
+            target_rows.append(with_month_keys(record))
 
     levels = {
         "residencia_notificacao_sintomas_sexo_idade": (
@@ -176,6 +199,15 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
             "ID_AGRAVO", "ID_MN_RESI", "DT_SIN_PRI", "CS_SEXO"
         ),
         "residencia_sintomas": ("ID_AGRAVO", "ID_MN_RESI", "DT_SIN_PRI"),
+        "residencia_sexo_idade": ("ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N"),
+        "residencia_sintomas_ano_mes": ("ID_AGRAVO", "ID_MN_RESI", "DT_SIN_PRI_ANO_MES"),
+        "residencia_notificacao_ano_mes": ("ID_AGRAVO", "ID_MN_RESI", "DT_NOTIFIC_ANO_MES"),
+        "residencia_sexo_idade_sintomas_ano_mes": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N", "DT_SIN_PRI_ANO_MES"
+        ),
+        "residencia_sexo_idade_notificacao_ano_mes": (
+            "ID_AGRAVO", "ID_MN_RESI", "CS_SEXO", "NU_IDADE_N", "DT_NOTIFIC_ANO_MES"
+        ),
     }
     indexes = {name: Counter() for name in levels}
     fields_2026 = []
@@ -183,12 +215,13 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
     for fields, record in iter_snapshot_records(path_2026):
         fields_2026 = fields
         rows_2026 += 1
+        enriched = with_month_keys(record)
         for name, key_fields in levels.items():
-            indexes[name][digest_fields(record, key_fields)] += 1
+            indexes[name][digest_fields(enriched, key_fields)] += 1
 
     detail = []
     for record in target_rows:
-        target_id = digest_fields(record, tuple(sorted(record.keys())))
+        target_id = digest_fields(record, tuple(sorted(k for k in record if not k.endswith("_ANO_MES"))))
         row = {
             "registro_2025_hash": target_id,
             "municipio_residencia_ibge": record.get("ID_MN_RESI", ""),
@@ -200,31 +233,33 @@ def audit_2025_targets_against_2026(path_2025: Path, path_2026: Path) -> tuple[d
             row[name + "_matches_2026"] = indexes[name][digest_fields(record, key_fields)]
         detail.append(row)
 
+    layers = {}
+    for name, key_fields in levels.items():
+        matching_counts = [indexes[name][digest_fields(record, key_fields)] for record in target_rows]
+        layers[name] = {
+            "campos": list(key_fields),
+            "registros_alvo_com_alguma_correspondencia": sum(count > 0 for count in matching_counts),
+            "ocorrencias_candidatas_somadas": sum(matching_counts),
+            "alvos_com_mais_de_uma_correspondencia": sum(count > 1 for count in matching_counts),
+            "observacao": (
+                "Camada exploratória; coincidência parcial pode ser casual e não comprova "
+                "identidade, duplicidade ou erro."
+            ),
+        }
+
     summary = {
         "criterio_alvo_2025": "NU_ANO contém 2026 ou DT_NOTIFIC/DT_SIN_PRI contém ano 2026",
         "registros_alvo_2025": len(target_rows),
         "registros_lidos_snapshot_2026": rows_2026,
         "colunas_snapshot_2025": fields_2025,
         "colunas_snapshot_2026": fields_2026,
-        "camadas_de_correspondencia": {
-            name: {
-                "campos": list(key_fields),
-                "registros_alvo_com_alguma_correspondencia": sum(
-                    1 for record in target_rows
-                    if indexes[name][digest_fields(record, key_fields)] > 0
-                ),
-                "ocorrencias_correspondentes_minimas": sum(
-                    min(1, indexes[name][digest_fields(record, key_fields)])
-                    for record in target_rows
-                ),
-                "observacao": "Chave progressivamente menos restritiva; coincidência não comprova identidade nem duplicidade."
-            }
-            for name, key_fields in levels.items()
-        },
-        "limite": "O relatório usa apenas hashes e código de município; não exporta dados clínicos brutos."
+        "camadas_de_correspondencia": layers,
+        "limite": (
+            "O relatório exporta hashes, código municipal e contagens de candidatos; "
+            "não exporta campos clínicos brutos nem declara correspondência como identidade."
+        ),
     }
     return summary, detail
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

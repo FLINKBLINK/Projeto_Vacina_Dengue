@@ -34,3 +34,24 @@ def test_target_audit_finds_2025_record_in_2026_with_looser_signature(tmp_path):
     assert summary["camadas_de_correspondencia"]["residencia_notificacao_sintomas_sexo_idade"]["registros_alvo_com_alguma_correspondencia"] == 1
     assert len(details) == 1
     assert "OBS" not in details[0]
+
+
+def test_flexible_audit_matches_same_month_when_day_changes(tmp_path):
+    p2025=tmp_path/"2025.zip"; p2026=tmp_path/"2026.zip"
+    target=row(OBS="v1", NU_ANO="2026", DT_NOTIFIC="2026-02-09", DT_SIN_PRI="2025-12-28")
+    current=row(OBS="v2", NU_ANO="2026", DT_NOTIFIC="2026-02-18", DT_SIN_PRI="2025-12-04")
+    make_zip(p2025,[target]); make_zip(p2026,[current])
+    summary,details=audit_2025_targets_against_2026(p2025,p2026)
+    layers=summary["camadas_de_correspondencia"]
+    assert layers["residencia_sintomas_ano_mes"]["registros_alvo_com_alguma_correspondencia"] == 1
+    assert layers["residencia_sexo_idade_sintomas_ano_mes"]["registros_alvo_com_alguma_correspondencia"] == 1
+    assert details[0]["residencia_sintomas_ano_mes_matches_2026"] == 1
+    assert "DT_SIN_PRI" not in details[0]
+
+
+def test_year_month_normalizes_common_date_formats():
+    from scripts.auditar_snapshots_sinan import year_month
+    assert year_month("2026-02-09") == "2026-02"
+    assert year_month("09/02/2026") == "2026-02"
+    assert year_month("20260209") == "2026-02"
+    assert year_month("") == ""

@@ -5,7 +5,7 @@ import argparse
 import csv
 import json
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 TEMPORAL_TYPES = {
@@ -24,7 +24,7 @@ def parse_date(value: str) -> date | None:
     value = (value or "").strip()
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y%m%d"):
         try:
-            return date.fromisoformat(value) if fmt == "%Y-%m-%d" else date.strptime(value, fmt)
+            return datetime.strptime(value, fmt).date()
         except (ValueError, TypeError, AttributeError):
             continue
     return None

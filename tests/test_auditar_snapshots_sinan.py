@@ -55,3 +55,28 @@ def test_year_month_normalizes_common_date_formats():
     assert year_month("09/02/2026") == "2026-02"
     assert year_month("20260209") == "2026-02"
     assert year_month("") == ""
+
+
+
+def test_stronger_signature_requires_both_months_and_matches_discriminators(tmp_path):
+    p2025=tmp_path/"2025.zip"; p2026=tmp_path/"2026.zip"
+    target=row(OBS="old", NU_ANO="2026", DT_NOTIFIC="2026-02-09", DT_SIN_PRI="2025-12-28",
+               SEM_PRI="202552", CLASSI_FIN="10", CRITERIO="1", EVOLUCAO="1")
+    current=row(OBS="new", NU_ANO="2026", DT_NOTIFIC="2026-02-18", DT_SIN_PRI="2025-12-04",
+                SEM_PRI="202552", CLASSI_FIN="10", CRITERIO="1", EVOLUCAO="1")
+    make_zip(p2025,[target]); make_zip(p2026,[current])
+    summary,details=audit_2025_targets_against_2026(p2025,p2026)
+    layers=summary["camadas_de_correspondencia"]
+    assert layers["residencia_sexo_idade_notificacao_sintomas_ano_mes"]["registros_alvo_com_alguma_correspondencia"] == 1
+    assert layers["residencia_sexo_idade_datas_semana"]["registros_alvo_com_alguma_correspondencia"] == 1
+    assert layers["residencia_sexo_idade_datas_classificacao_desfecho"]["registros_alvo_com_alguma_correspondencia"] == 1
+
+
+def test_signature_with_missing_discriminator_is_not_matched(tmp_path):
+    p2025=tmp_path/"2025.zip"; p2026=tmp_path/"2026.zip"
+    target=row(OBS="old", NU_ANO="2026", CS_SEXO="", NU_IDADE_N="")
+    current=row(OBS="new", NU_ANO="2026", CS_SEXO="", NU_IDADE_N="")
+    make_zip(p2025,[target]); make_zip(p2026,[current])
+    summary,details=audit_2025_targets_against_2026(p2025,p2026)
+    assert summary["camadas_de_correspondencia"]["residencia_sexo_idade"]["registros_alvo_com_alguma_correspondencia"] == 0
+    assert details[0]["residencia_sexo_idade_matches_2026"] == 0

@@ -14,13 +14,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
-DATE_RULES = (
-    ("inicio_sintomas_apos_notificacao", "DT_SIN_PRI", "DT_NOTIFIC", "greater"),
-    ("investigacao_antes_notificacao", "DT_INVEST", "DT_NOTIFIC", "less"),
-    ("encerramento_antes_investigacao", "DT_ENCERRA", "DT_INVEST", "less"),
-    ("encerramento_antes_notificacao", "DT_ENCERRA", "DT_NOTIFIC", "less"),
-    ("obito_antes_inicio_sintomas", "DT_OBITO", "DT_SIN_PRI", "less"),
-)
+from scripts.regras_temporais_sinan import DATE_PENDING_RULES as DATE_RULES
 
 CSV_FIELDS = [
     "tipo_pendencia", "ano_arquivo", "chave_registro", "municipio", "municipio_ibge",

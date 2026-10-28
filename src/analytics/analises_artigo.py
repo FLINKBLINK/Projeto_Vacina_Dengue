@@ -109,7 +109,17 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
         jan_abr = pd.DataFrame(columns=["municipio", 2023, 2025])
     jan_abr["variacao_2023_2025_jan_abr_pct"] = calcular_variacao_percentual(jan_abr[2023], jan_abr[2025])
 
-    doses_2024 = (vac[vac["ano"] == 2024].groupby("municipio", as_index=False)["doses"]
+    # Só usamos a soma anual quando os 12 meses têm valores de dose válidos.
+    meses_validos = (vac.dropna(subset=["mes_numero", "doses"])
+                     .groupby(["municipio", "ano"])["mes_numero"].agg(
+                         lambda s: set(s.astype(int).tolist())))
+    municipios_vac_2024_completa = {
+        municipio for municipio in municipios
+        if set(range(1, 13)).issubset(meses_validos.get((municipio, 2024), set()))
+    }
+    doses_2024 = (vac[(vac["ano"] == 2024) &
+                      (vac["municipio"].isin(municipios_vac_2024_completa))]
+                  .groupby("municipio", as_index=False)["doses"]
                   .sum(min_count=1).rename(columns={"doses": "doses_2024"}))
     taxa_2024 = doses_2024.merge(pop, on="municipio", how="left")
     taxa_2024["taxa_doses_2024_pct"] = calcular_doses_por_100_habitantes(
@@ -127,7 +137,7 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
     meses_2025 = sorted(vac.loc[vac["ano"] == 2025, "mes_numero"].dropna().astype(int).unique().tolist())
     tem_jan_abr_2025 = all(m in meses_2025 for m in range(1, 5))
     meses_por_municipio = (vac[vac["ano"].isin([2024, 2025])]
-                           .dropna(subset=["mes_numero"])
+                           .dropna(subset=["mes_numero", "doses"])
                            .groupby(["municipio", "ano"])["mes_numero"].agg(
                                lambda s: set(s.astype(int).tolist())))
     municipios_vac_completa = set()
@@ -167,12 +177,12 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
         _diagnostico_amostra(
             "Correlação 1", municipios,
             set(corr1_df["municipio"].dropna()),
-            "Somente municípios com registros SINAN observados em 2023 e 2024 e taxa de doses calculável.",
+            "Somente municípios com registros SINAN observados em 2023 e 2024 e os 12 meses de vacinação de 2024 válidos.",
         ),
         _diagnostico_amostra(
             "Correlação 2", municipios,
             set(corr2_df["municipio"].dropna()),
-            "Somente municípios com registros observados em jan-abr/2023 e jan-abr/2025 e taxa de doses calculável.",
+            "Somente municípios com registros observados em jan-abr/2023 e jan-abr/2025 e os 12 meses de vacinação de 2024 válidos.",
         ),
         _diagnostico_amostra(
             "Correlação 3", municipios,

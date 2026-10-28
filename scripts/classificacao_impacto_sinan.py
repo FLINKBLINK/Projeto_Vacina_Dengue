@@ -28,7 +28,7 @@ ISSUE_POLICY = {
     },
     "classificacao_inconclusiva": {
         "severidade": "inconclusiva",
-        "impacto": "casos_dengue_confirmados",
+        "impacto": "registros_inconclusivos_sinan",
         "impacto_vacinacao": "nao_direto",
         "tratamento": "Não contar como dengue confirmada; manter na contagem de registros inconclusivos.",
         "revisao_manual": False,

@@ -48,7 +48,8 @@ def test_analises_nao_imputa_zero_quando_ano_esta_ausente():
     corr1_municipios = set(resultado["correlacao_1_dados"]["municipio"])
     corr2_municipios = set(resultado["correlacao_2_dados"]["municipio"])
     assert "Cravinhos" not in corr1_municipios
-    assert "Cravinhos" not in corr2_municipios
+    # A Correlação 2 compara jan-abr/2023 com jan-abr/2025, não o ano inteiro de 2024.
+    assert "Cravinhos" in corr2_municipios
     diag = resultado["diagnosticos_amostra"].set_index("analise")
     assert diag.loc["Correlação 1", "municipios_excluidos"] >= 1
 
@@ -94,4 +95,17 @@ def test_correlacoes_1_e_2_exigem_ano_completo_de_vacinacao_2024():
     assert "Cravinhos" not in set(resultado["correlacao_2_dados"]["municipio"])
     diag = resultado["diagnosticos_amostra"].set_index("analise")
     assert "Cravinhos" in diag.loc["Correlação 1", "excluidos"]
+    assert "Cravinhos" in diag.loc["Correlação 2", "excluidos"]
+
+
+def test_correlacao_2_exclui_municipio_sem_jan_abr_de_2025():
+    municipios = ["Barrinha", "Cravinhos", "Guatapará"]
+    vacinacao, casos, populacao = _bases_sinteticas(municipios)
+    casos = casos[~((casos["municipio"] == "Cravinhos") &
+                    (casos["data_notificacao"].str.startswith("2025-")))]
+
+    resultado = construir_analises_artigo(vacinacao, casos, populacao)
+
+    assert "Cravinhos" not in set(resultado["correlacao_2_dados"]["municipio"])
+    diag = resultado["diagnosticos_amostra"].set_index("analise")
     assert "Cravinhos" in diag.loc["Correlação 2", "excluidos"]

@@ -29,7 +29,7 @@ def extrair_lista(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [row for row in payload if isinstance(row, dict)]
     if isinstance(payload, dict):
-        for key in ("data", "dados", "results", "resultados", "items", "registros"):
+        for key in ("data", "dados", "results", "resultados", "items", "registros", "dengue"):
             value = payload.get(key)
             if isinstance(value, list):
                 return [row for row in value if isinstance(row, dict)]

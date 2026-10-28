@@ -14,13 +14,15 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from scripts.classificacao_impacto_sinan import classify_pending, summarize_classifications
 from scripts.regras_temporais_sinan import DATE_PENDING_RULES as DATE_RULES
 
 CSV_FIELDS = [
     "tipo_pendencia", "ano_arquivo", "chave_registro", "municipio", "municipio_ibge",
     "NU_ANO", "DT_NOTIFIC", "DT_SIN_PRI", "DT_INVEST", "DT_ENCERRA",
     "CLASSI_FIN", "EVOLUCAO", "CRITERIO", "CS_SEXO", "NU_IDADE_N", "SEM_PRI",
-    "detalhe",
+    "severidade", "impacto", "impacto_vacinacao", "tratamento",
+    "revisao_manual", "regra_catalogo", "detalhe",
 ]
 
 
@@ -163,9 +165,29 @@ def audit_pending(db_path: str, years: tuple[int, ...]) -> tuple[dict, list[dict
                     pending.append({**item, "tipo_pendencia": "conteudo_clinico_repetido",
                                     "detalhe": f"grupo com {len(group)} linhas; comparar antes de qualquer deduplicação"})
 
+    # Classificar cada ocorrência sem modificar os registros armazenados na base.
+    # A contagem é de ocorrências de pendência, não de pessoas únicas.
+    pending = [classify_pending(item) for item in pending]
+
     counts = Counter(row.get("tipo_pendencia", "desconhecida") for row in pending)
     summary["pendencias_por_tipo"] = dict(sorted(counts.items()))
     summary["total_linhas_pendencia"] = len(pending)
+    summary["classificacao_impacto"] = summarize_classifications(pending)
+
+    # Cruzamento por tipo ajuda a identificar regras recorrentes e tipos não catalogados.
+    by_type = defaultdict(Counter)
+    for item in pending:
+        issue_type = item.get("tipo_pendencia", "desconhecida")
+        by_type[issue_type]["ocorrencias"] += 1
+        by_type[issue_type][f"severidade:{item['severidade']}"] += 1
+        by_type[issue_type][f"impacto:{item['impacto']}"] += 1
+        by_type[issue_type][f"impacto_vacinacao:{item['impacto_vacinacao']}"] += 1
+        if not item["regra_catalogo"]:
+            by_type[issue_type]["fora_do_catalogo"] += 1
+    summary["classificacao_por_tipo_pendencia"] = {
+        issue_type: dict(sorted(counts.items()))
+        for issue_type, counts in sorted(by_type.items())
+    }
     return summary, pending
 
 

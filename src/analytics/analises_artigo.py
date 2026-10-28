@@ -66,6 +66,18 @@ def _correlacionar(nome: str, dados: pd.DataFrame, x: str, y: str, status: str =
     return resultado
 
 
+def _municipios_efetivos(dados: pd.DataFrame, x: str, y: str) -> set[str]:
+    """Retorna municípios com par numérico finito efetivamente elegível à correlação."""
+    if dados.empty:
+        return set()
+    pares = dados[["municipio", x, y]].copy()
+    pares[x] = pd.to_numeric(pares[x], errors="coerce")
+    pares[y] = pd.to_numeric(pares[y], errors="coerce")
+    pares = pares.dropna(subset=["municipio", x, y])
+    pares = pares[np.isfinite(pares[x]) & np.isfinite(pares[y])]
+    return set(pares["municipio"].astype(str))
+
+
 def _diagnostico_amostra(nome: str, municipios_esperados: set[str],
                          municipios_incluidos: set[str], observacao: str) -> dict:
     return {
@@ -176,18 +188,18 @@ def construir_analises_artigo(vacinacao: pd.DataFrame, casos: pd.DataFrame,
     diagnosticos = pd.DataFrame([
         _diagnostico_amostra(
             "Correlação 1", municipios,
-            set(corr1_df["municipio"].dropna()),
-            "Somente municípios com registros SINAN observados em 2023 e 2024 e os 12 meses de vacinação de 2024 válidos.",
+            _municipios_efetivos(corr1_df, "taxa_doses_2024_pct", "variacao_2023_2024_pct"),
+            "Somente municípios com par finito calculável, registros SINAN observados em 2023 e 2024 e os 12 meses de vacinação de 2024 válidos.",
         ),
         _diagnostico_amostra(
             "Correlação 2", municipios,
-            set(corr2_df["municipio"].dropna()),
-            "Somente municípios com registros observados em jan-abr/2023 e jan-abr/2025 e os 12 meses de vacinação de 2024 válidos.",
+            _municipios_efetivos(corr2_df, "taxa_doses_2024_pct", "variacao_2023_2025_jan_abr_pct"),
+            "Somente municípios com par finito calculável, registros observados em jan-abr/2023 e jan-abr/2025 e os 12 meses de vacinação de 2024 válidos.",
         ),
         _diagnostico_amostra(
             "Correlação 3", municipios,
-            set(corr3_df["municipio"].dropna()),
-            "Somente municípios com todos os meses de vacinação de 2024 e jan-abr/2025, população válida e registros SINAN observados em jan-abr/2025.",
+            _municipios_efetivos(corr3_df, "taxa_doses_acumulada_pct", "registros_2025_jan_abr"),
+            "Somente municípios com par finito calculável, todos os meses de vacinação de 2024 e jan-abr/2025, população válida e registros SINAN observados em jan-abr/2025.",
         ),
     ])
 

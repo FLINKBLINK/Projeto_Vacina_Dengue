@@ -78,3 +78,20 @@ def test_correlacao_3_fica_indisponivel_sem_meses_completos_por_municipio():
 
     assert resultado["correlacoes"].iloc[2]["status"].startswith("indisponível")
     assert resultado["correlacao_3_dados"].empty
+
+
+def test_correlacoes_1_e_2_exigem_ano_completo_de_vacinacao_2024():
+    municipios = ["Barrinha", "Cravinhos", "Guatapará"]
+    vacinacao, casos, populacao = _bases_sinteticas(municipios)
+    # A ausência de um mês não pode ser escondida pela soma parcial anual.
+    vacinacao = vacinacao[~((vacinacao["municipio"] == "Cravinhos") &
+                            (vacinacao["ano"] == 2024) &
+                            (vacinacao["mes_numero"] == 7))]
+
+    resultado = construir_analises_artigo(vacinacao, casos, populacao)
+
+    assert "Cravinhos" not in set(resultado["correlacao_1_dados"]["municipio"])
+    assert "Cravinhos" not in set(resultado["correlacao_2_dados"]["municipio"])
+    diag = resultado["diagnosticos_amostra"].set_index("analise")
+    assert "Cravinhos" in diag.loc["Correlação 1", "excluidos"]
+    assert "Cravinhos" in diag.loc["Correlação 2", "excluidos"]

@@ -22,8 +22,8 @@ def test_series_uses_symptom_year_and_keeps_missing_and_future_dates_separate():
     report = aggregate_records(records)
 
     assert report["total_registros_origem"] == 4
-    assert report["registros_por_ano_inicio_sintomas"] == {"2023": 1, "2026": 1}
-    assert report["registros_por_ano_notificacao"] == {"2024": 1, "2025": 2}
+    assert report["registros_por_ano_inicio_sintomas"] == {2023: 1, 2026: 1}
+    assert report["registros_por_ano_notificacao"] == {2024: 1, 2025: 2}
     assert report["qualidade_data_inicio_sintomas"] == {"ausente": 1, "invalida": 1, "valida": 2}
     assert report["datas_sintomas_posteriores_ao_snapshot"] == [
         {"ano_arquivo": 2025, "ano_inicio_sintomas": 2026, "registros": 1}

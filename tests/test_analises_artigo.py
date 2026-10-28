@@ -109,3 +109,16 @@ def test_correlacao_2_exclui_municipio_sem_jan_abr_de_2025():
     assert "Cravinhos" not in set(resultado["correlacao_2_dados"]["municipio"])
     diag = resultado["diagnosticos_amostra"].set_index("analise")
     assert "Cravinhos" in diag.loc["Correlação 2", "excluidos"]
+
+
+def test_diagnostico_conta_apenas_municipios_com_par_finito():
+    municipios = ["Barrinha", "Cravinhos", "Guatapará"]
+    vacinacao, casos, populacao = _bases_sinteticas(municipios)
+    populacao.loc[populacao["municipio"] == "Cravinhos", "populacao"] = 0
+
+    resultado = construir_analises_artigo(vacinacao, casos, populacao)
+
+    diag = resultado["diagnosticos_amostra"].set_index("analise")
+    assert diag.loc["Correlação 1", "municipios_incluidos"] == 2
+    assert "Cravinhos" in diag.loc["Correlação 1", "excluidos"]
+    assert resultado["correlacoes"].iloc[0]["n_municipios"] == 2

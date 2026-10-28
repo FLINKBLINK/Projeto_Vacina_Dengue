@@ -54,7 +54,7 @@ def _lista_registros(payload: Any) -> list[dict[str, Any]]:
             raise ErroETLOficial("A lista JSON contém elementos que não são objetos.")
         return payload
     if isinstance(payload, dict):
-        for key in ("data", "dados", "results", "resultados", "items", "registros"):
+        for key in ("data", "dados", "results", "resultados", "items", "registros", "dengue"):
             value = payload.get(key)
             if isinstance(value, list):
                 if not all(isinstance(row, dict) for row in value):

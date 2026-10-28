@@ -50,7 +50,7 @@ jobs:
           python scripts/auditar_snapshots_sinan.py --zip-2024 data/snapshots-sinan/DENGBR24.csv.zip --zip-2025 data/snapshots-sinan/DENGBR25.csv.zip --zip-2026 data/snapshots-sinan/DENGBR26.csv.zip --output-dir reports/snapshots-sinan
       - name: Investigar candidato local sem exportar dados clínicos brutos
         run: |
-          python scripts/investigar_candidato_sinan.py --zip-2025 data/snapshots-sinan/DENGBR25.csv.zip --zip-2026 data/snapshots-sinan/DENGBR26.csv.zip --target-hash-prefix 09ec2b5ba6c8 --output-dir reports/snapshots-sinan
+          python -m scripts.investigar_candidato_sinan --zip-2025 data/snapshots-sinan/DENGBR25.csv.zip --zip-2026 data/snapshots-sinan/DENGBR26.csv.zip --target-hash-prefix 09ec2b5ba6c8 --output-dir reports/snapshots-sinan
       - uses: actions/upload-artifact@v4
         with:
           name: comparacao-snapshots-sinan-2024-2026

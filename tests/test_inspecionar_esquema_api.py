@@ -12,14 +12,10 @@ from scripts.inspecionar_esquema_api import extrair_lista
         ({"dengue": [{"id": 1}, "ignorar", None]}, [{"id": 1}]),
         ({"dengue": []}, []),
         ({"results": [{"id": 1}]}, [{"id": 1}]),
-        ({"resultado": {"dengue": [{"id": 1}]}}, [{"id": 1}]),
     ],
 )
 def test_extrair_lista_reconhece_formatos_comuns(payload, esperado):
-    # O envelope SINAN conhecido é {"dengue": [...]}; também aceitamos
-    # um envelope interno quando a resposta vem encapsulada pelo serviço.
-    if "resultado" in payload:
-        payload = payload["resultado"]
+    # O envelope SINAN conhecido é {"dengue": [...]}.
     assert extrair_lista(payload) == esperado
 
 

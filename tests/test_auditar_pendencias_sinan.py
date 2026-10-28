@@ -53,6 +53,16 @@ def test_details_year_classification_missing_fields_and_duplicate_payload(tmp_pa
     assert "ano_notificacao_diferente_arquivo" in types
     assert summary["grupos_conteudo_clinico_repetido_por_ano"]["2024"] == 1
 
+    # A auditoria já entrega severidade e impacto por ocorrência.
+    inconclusive = [row for row in pending if row["tipo_pendencia"] == "classificacao_inconclusiva"]
+    assert inconclusive
+    assert all(row["severidade"] == "inconclusiva" for row in inconclusive)
+    assert all(row["impacto_vacinacao"] == "nao_direto" for row in inconclusive)
+    assert summary["classificacao_impacto"]["total_ocorrencias"] == len(pending)
+    assert summary["classificacao_impacto"]["por_severidade"]["inconclusiva"] >= 2
+    assert summary["classificacao_por_tipo_pendencia"]["classificacao_inconclusiva"]["ocorrencias"] == 2
+    assert summary["classificacao_por_tipo_pendencia"]["ano_notificacao_diferente_arquivo"]["impacto:series_temporais_sinan"] >= 1
+
 
 def test_empty_year_raises(tmp_path):
     db = tmp_path / "test.db"

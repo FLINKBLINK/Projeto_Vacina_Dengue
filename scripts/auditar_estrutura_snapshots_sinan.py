@@ -45,6 +45,8 @@ def _ano_data(value: object) -> str:
         return raw[:4]
     if len(raw) == 8 and raw.isdigit():
         return raw[-4:]
+    if len(raw) == 10 and raw[2] == "/" and raw[5] == "/" and raw[-4:].isdigit():
+        return raw[-4:]
     return "ausente_ou_formato_nao_reconhecido"
 
 

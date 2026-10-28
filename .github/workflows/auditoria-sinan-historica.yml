@@ -142,6 +142,13 @@ jobs:
                 f"{cross.get('grupos_assinatura_clinica_presentes_em_multiplos_anos')}")
           PY
 
+      - name: Gerar série temporal por início dos sintomas
+        run: |
+          python -m scripts.serie_temporal_sinan \
+            --db data/processed/sinan_historico.db \
+            --years 2023,2024,2025 \
+            --output data/processed/serie_temporal_sinan.json
+
       - name: Publicar banco e relatórios consolidados
         if: always()
         uses: actions/upload-artifact@v4
@@ -160,6 +167,7 @@ jobs:
             data/processed/pendencias_semanticas_sinan.csv
             data/processed/classificacao_temporal_sinan.json
             data/processed/classificacao_temporal_sinan.csv
+            data/processed/serie_temporal_sinan.json
             data/processed/sha256_sinan_2023.txt
             data/processed/sha256_sinan_2024.txt
             data/processed/sha256_sinan_2025.txt

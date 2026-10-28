@@ -86,3 +86,18 @@ python -m scripts.diagnosticar_paginacao_sinan --ano 2024 --max-pages 1 --page-s
 
 Se `varredura_completa` for `false`, os resultados são parciais: o limite de páginas foi atingido antes de uma página curta. Só considerar contagens históricas completas quando a paginação terminar normalmente; depois disso, ainda será necessário validar duplicatas, classificação final dos casos e semântica dos campos antes de gerar tabelas analíticas. O script é diagnóstico, não altera o ETL de produção nem as tabelas do dashboard.
 
+
+
+## Série temporal SINAN por início dos sintomas
+
+O relatório `scripts/serie_temporal_sinan.py` produz uma visão agregada e auditável usando `DT_SIN_PRI` válida como referência principal do ano epidemiológico. Ele preserva a distribuição separada por ano de notificação (`DT_NOTIFIC`) e ano do arquivo/snapshot. Datas de sintomas ausentes ou inválidas ficam em categorias próprias; datas posteriores ao ano nominal do snapshot continuam no ano real da data e são sinalizadas, sem exclusão automática.
+
+A saída inclui totais por ano, município/ano, classificação final, qualidade da data e casos em que o ano de sintomas é posterior ao ano do arquivo. As contagens são de registros/notificações, não de pessoas únicas. Os códigos de classificação ficam separados; registros inconclusivos, descartados, de chikungunya, sem classificação ou com código desconhecido não são somados ao grupo de dengue classificada.
+
+Executar após a carga auditada do SQLite:
+
+```bash
+python -m scripts.serie_temporal_sinan --db data/processed/sinan_historico.db --years 2023,2024,2025 --output data/processed/serie_temporal_sinan.json
+```
+
+O relatório é investigativo e não modifica as tabelas brutas nem atualiza automaticamente o dashboard. Antes de publicar números, revisar o dicionário oficial aplicável à versão do arquivo e a interpretação dos códigos de classificação.

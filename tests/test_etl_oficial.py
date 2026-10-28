@@ -14,7 +14,7 @@ from src.ingestion.etl_oficial import (
 
 def test_lista_registros_aceita_lista_raiz_e_chaves_comuns():
     assert _lista_registros([{"a": 1}]) == [{"a": 1}]
-    assert _lista_registros({"data": [{"b": 2}]}) == [{"b": 2}]
+    assert _lista_registros({"data": [{"b": 2}]}) == [{"b": 2}]\n    assert _lista_registros({"dengue": [{"c": 3}]}) == [{"c": 3}]
 
 
 def test_lista_registros_rejeita_resposta_ambigua():

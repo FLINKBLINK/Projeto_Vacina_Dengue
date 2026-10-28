@@ -18,7 +18,7 @@ def test_inconclusive_classification_is_not_counted_as_confirmed_dengue():
     result = classify_issue("classificacao_inconclusiva")
 
     assert result["severidade"] == "inconclusiva"
-    assert result["impacto"] == "casos_dengue_confirmados"
+    assert result["impacto"] == "registros_inconclusivos_sinan"
     assert "Não contar como dengue confirmada" in result["tratamento"]
 
 

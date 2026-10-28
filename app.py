@@ -141,6 +141,19 @@ try:
     tabela_corr = analises_artigo["correlacoes"].copy()
     tabela_corr = tabela_corr[["analise", "status", "n_municipios", "r", "p_value", "r_artigo", "p_artigo", "diferenca_r", "diferenca_p"]]
     st.dataframe(tabela_corr, use_container_width=True, hide_index=True)
+    st.caption(
+        "n_municipios é o número efetivo de municípios usados no cálculo, após remover pares "
+        "ausentes e valores não finitos. Correlação de Pearson descreve associação linear; "
+        "não demonstra causalidade nem efeito individual da vacina."
+    )
+    st.markdown("**Auditoria da amostra usada em cada correlação**")
+    st.dataframe(analises_artigo["diagnosticos_amostra"], use_container_width=True, hide_index=True)
+    st.info(
+        "Para as variações entre períodos, municípios sem registros observados nos dois períodos "
+        "não são tratados automaticamente como zero: ficam fora do cálculo e aparecem no diagnóstico. "
+        "Isso evita uma imputação silenciosa, mas a ausência de registros ainda precisa ser interpretada "
+        "à luz da completude da fonte."
+    )
     if not analises_artigo["tem_jan_abr_vacinacao_2025"]:
         st.warning("A Correlação 3 não pode ser calculada porque faltam um ou mais meses entre janeiro e abril de 2025 na vacinação.")
     else:

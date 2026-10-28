@@ -37,7 +37,7 @@ def test_compara_cabecalhos_e_distribuicoes_sem_expor_linhas(tmp_path):
         "Pontal": 1,
     }
     assert report["snapshots"]["2023"]["distribuicao_CLASSI_FIN"] == {"10": 1, "8": 1}
-    assert "CAMPO_NOVO" in report["comparacao_cabecalhos"][1]["colunas_ausentes_em_relacao_a_uniao"]
+    assert "CAMPO_NOVO" in report["comparacao_cabecalhos"][0]["colunas_ausentes_em_relacao_a_uniao"]
     serialized = json.dumps(report, ensure_ascii=False)
     assert "2023-02-01" not in serialized
     assert "2024-01-01" not in serialized

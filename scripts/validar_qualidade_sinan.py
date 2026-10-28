@@ -26,18 +26,7 @@ DATE_FIELDS = (
 )
 KEY_FIELDS = ("ID_AGRAVO", "ID_MN_RESI", "NU_ANO", "DT_NOTIFIC", "DT_SIN_PRI",
               "CS_SEXO", "NU_IDADE_N", "CLASSI_FIN", "EVOLUCAO")
-DATE_ORDER_RULES = (
-    ("inicio_sintomas_apos_notificacao", "DT_SIN_PRI", "DT_NOTIFIC", "greater"),
-    ("investigacao_antes_notificacao", "DT_INVEST", "DT_NOTIFIC", "less"),
-    ("encerramento_antes_investigacao", "DT_ENCERRA", "DT_INVEST", "less"),
-    ("encerramento_antes_notificacao", "DT_ENCERRA", "DT_NOTIFIC", "less"),
-    ("obito_antes_inicio_sintomas", "DT_OBITO", "DT_SIN_PRI", "less"),
-    ("coleta_ns1_antes_inicio_sintomas", "DT_NS1", "DT_SIN_PRI", "less"),
-    ("coleta_pcr_antes_inicio_sintomas", "DT_PCR", "DT_SIN_PRI", "less"),
-    ("coleta_soro_antes_inicio_sintomas", "DT_SORO", "DT_SIN_PRI", "less"),
-    ("coleta_prnt_antes_inicio_sintomas", "DT_PRNT", "DT_SIN_PRI", "less"),
-    ("coleta_viral_antes_inicio_sintomas", "DT_VIRAL", "DT_SIN_PRI", "less"),
-)
+from scripts.regras_temporais_sinan import DATE_ORDER_RULES
 # Domínios de referência para SINAN Online Dengue/Chikungunya.
 # O dicionário oficial de 2015 lista 5, 10, 11, 12 e 13; referências técnicas
 # da série histórica também documentam CLASSI_FIN=8 como "Inconclusivo".

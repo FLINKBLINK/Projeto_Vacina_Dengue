@@ -132,12 +132,11 @@ def diagnosticar(ano: int, max_pages: int, page_size: int, pausa: float) -> dict
     sem_codigo = 0
     ultima_pagina_cheia = False
     for pagina in range(max_pages):
-        # Nesta API, offset representa a posição inicial do registro.
-        # Avança pelo tamanho solicitado para evitar sobreposição entre páginas.
-        offset = pagina * page_size
+        # O Swagger da API DEMAS define offset como índice da página:
+        # 0, 1, 2...; não como quantidade de linhas a pular.
         response = session.get(
             f"{BASE}{ROTA}",
-            params={"nu_ano": str(ano), "limit": page_size, "offset": offset},
+            params={"nu_ano": str(ano), "limit": page_size, "offset": pagina},
             timeout=TIMEOUT,
         )
         response.raise_for_status()

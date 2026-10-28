@@ -58,8 +58,7 @@ def test_lista_registros_aceita_envelope_dengue_vazio():
     assert lista_registros({"dengue": []}) == []
 
 
-
-def test_diagnosticar_offset_avanca_pelo_tamanho_da_pagina(monkeypatch):
+def test_diagnosticar_offset_avanca_por_indice_de_pagina(monkeypatch):
     offsets = []
 
     class Response:
@@ -80,15 +79,15 @@ def test_diagnosticar_offset_avanca_pelo_tamanho_da_pagina(monkeypatch):
             offsets.append(params["offset"])
             paginas = {
                 0: [{"id_mn_resi": "320530"}, {"id_mn_resi": "320500"}],
-                2: [{"id_mn_resi": "354340"}, {"id_mn_resi": "354340"}],
-                4: [],
+                1: [{"id_mn_resi": "354340"}, {"id_mn_resi": "354340"}],
+                2: [],
             }
             return Response(paginas[params["offset"]])
 
     monkeypatch.setattr(diagnostico_sinan.requests, "Session", Session)
     resultado = diagnosticar(2024, max_pages=5, page_size=2, pausa=0)
 
-    assert offsets == [0, 2, 4]
+    assert offsets == [0, 1, 2]
     assert resultado["registros_lidos"] == 4
     assert resultado["varredura_completa"] is True
     assert resultado["registros_por_municipio_residencia_alvo"]["Ribeirão Preto"] == 2

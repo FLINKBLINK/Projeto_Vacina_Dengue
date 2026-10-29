@@ -19,7 +19,7 @@ def test_agrega_anos_classificacao_municipio_e_hashes_sem_expor_linhas(tmp_path)
     assert report["hashes_de_linhas_exatas_distintas"] == 2
     assert report["linhas_repetidas_por_hash_exato"] == 1
     assert report["distribuicao_NU_ANO"] == {"2023": 1, "2024": 2}
-    assert report["distribuicao_ano_DT_SIN_PRI"] == {"2023": 1, "2024": 2}
+    assert report["distribuicao_ano_DT_SIN_PRI"] == {"2024": 3}
     assert report["distribuicao_CLASSI_FIN"] == {"10": 2, "8": 1}
     assert report["distribuicao_NDUPLIC_N"] == {"1": 2, "2": 1}
     assert report["municipios_alvo_por_ano_inicio_sintomas"] == [

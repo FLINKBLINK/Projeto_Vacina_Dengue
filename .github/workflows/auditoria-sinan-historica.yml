@@ -72,6 +72,14 @@ jobs:
               --output "data/processed/qualidade_sinan_${year}.json"
           done
 
+      - name: Comparar estrutura e distribuições dos snapshots nacionais
+        run: |
+          python -m scripts.auditar_estrutura_snapshots_sinan \
+            --arquivo 2023=/tmp/sinan_2023.zip \
+            --arquivo 2024=/tmp/sinan_2024.zip \
+            --arquivo 2025=/tmp/sinan_2025.zip \
+            --output data/processed/comparacao_estrutura_snapshots_sinan.json
+
       - name: Auditar consistência temporal entre os anos
         run: |
           python -m scripts.auditar_sinan_entre_anos \
@@ -168,6 +176,7 @@ jobs:
             data/processed/classificacao_temporal_sinan.json
             data/processed/classificacao_temporal_sinan.csv
             data/processed/serie_temporal_sinan.json
+            data/processed/comparacao_estrutura_snapshots_sinan.json
             data/processed/sha256_sinan_2023.txt
             data/processed/sha256_sinan_2024.txt
             data/processed/sha256_sinan_2025.txt

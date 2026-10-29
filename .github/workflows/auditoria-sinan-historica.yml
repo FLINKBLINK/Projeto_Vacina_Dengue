@@ -157,6 +157,14 @@ jobs:
             --years 2023,2024,2025 \
             --output data/processed/serie_temporal_sinan.json
 
+      - name: Auditar comparabilidade temporal e duplicidade exata dos snapshots
+        run: |
+          python -m scripts.auditar_comparabilidade_temporal_sinan \\
+            --arquivo 2023=/tmp/sinan_2023.zip \\
+            --arquivo 2024=/tmp/sinan_2024.zip \\
+            --arquivo 2025=/tmp/sinan_2025.zip \\
+            --output data/processed/auditoria_comparabilidade_temporal_sinan.json
+
       - name: Publicar banco e relatórios consolidados
         if: always()
         uses: actions/upload-artifact@v4
@@ -177,6 +185,7 @@ jobs:
             data/processed/classificacao_temporal_sinan.csv
             data/processed/serie_temporal_sinan.json
             data/processed/comparacao_estrutura_snapshots_sinan.json
+            data/processed/auditoria_comparabilidade_temporal_sinan.json
             data/processed/sha256_sinan_2023.txt
             data/processed/sha256_sinan_2024.txt
             data/processed/sha256_sinan_2025.txt

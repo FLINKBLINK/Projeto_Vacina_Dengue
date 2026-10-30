@@ -183,8 +183,8 @@ def analisar_csv(stream: TextIO, codigos_ibge: set[str] | None = None) -> dict:
         not_code = normalizar_codigo(not_raw)
         res_uf_raw = row.get(residence_uf_col) if residence_uf_col else None
         not_uf_raw = row.get(notifier_uf_col) if notifier_uf_col else None
-        acumular_geografia(geo, "residencia", res_raw, res_uf_raw)
-        acumular_geografia(geo, "notificacao", not_raw, not_uf_raw)
+        acumular_geografia(geo, "residencia", res_raw, res_uf_raw, codigos_ibge=codigos_ibge)
+        acumular_geografia(geo, "notificacao", not_raw, not_uf_raw, codigos_ibge=codigos_ibge)
         if res_code is None:
             missing_residence += 1
         elif res_code in MUNICIPIOS:

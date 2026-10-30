@@ -43,3 +43,35 @@ def test_guatapara_nao_confunde_codigo_de_guarulhos():
     result = analisar_csv(io.StringIO(csv_text))
     assert result["por_municipio_residencia"]["Guatapará"] == 1
     assert result["por_municipio_notificador"]["Guatapará"] == 1
+
+
+def test_audita_uf_residencia_e_notificacao():
+    csv_text = (
+        "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF;NU_ANO\n"
+        "354340;354020;35;35;2024\n"
+        "354340;354020;35;SP;2024\n"
+        "330455;354020;33;33;2024\n"
+        "999999;354020;35;35;2024\n"
+        ";354020;35;35;2024\n"
+        "abc;354020;35;35;2024\n"
+    )
+    result = analisar_csv(io.StringIO(csv_text))
+    auditoria = result["auditoria_geografica"]
+    assert auditoria["colunas_uf_encontradas"] == {"SG_UF": True, "SG_UF_NOT": True}
+    residencia = auditoria["por_dimensao"]["residencia"]
+    notificacao = auditoria["por_dimensao"]["notificacao"]
+    assert residencia["uf_compativel"] == 5
+    assert residencia["uf_divergente"] == 1
+    assert notificacao["uf_compativel"] == 3
+    assert notificacao["uf_divergente"] == 1
+    assert notificacao["codigo_invalido"] == 1
+    assert {"codigo": "999999", "registros": 1} in notificacao["codigos_validos_nao_mapeados_top_30"]
+
+
+def test_normaliza_uf_por_codigo_ou_sigla():
+    from scripts.validar_sinan_residencia_arquivo import normalizar_uf
+
+    assert normalizar_uf("35") == "35"
+    assert normalizar_uf("SP") == "35"
+    assert normalizar_uf(" 35 ") == "35"
+    assert normalizar_uf("XX") is None

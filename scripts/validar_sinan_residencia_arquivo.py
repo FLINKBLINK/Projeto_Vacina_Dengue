@@ -31,7 +31,8 @@ MUNICIPIOS = {
     "355150": "Serrana",
     "355170": "Sertãozinho",
 }
-URL_TEMPLATE = "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR{ano2}.csv.zip"\nIBGE_MUNICIPIOS_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
+URL_TEMPLATE = "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR{ano2}.csv.zip"
+IBGE_MUNICIPIOS_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
 
 
 def normalizar_codigo(value: object) -> str | None:
@@ -59,7 +60,7 @@ def normalizar_uf(value: object) -> str | None:
     raw = str(value).strip().upper()
     if raw in UF_SIGLAS:
         return UF_SIGLAS[raw]
-    digits = re.sub(r"\\D", "", raw)
+    digits = re.sub(r"\D", "", raw)
     return digits if len(digits) == 2 and digits in UF_IBGE else None
 
 

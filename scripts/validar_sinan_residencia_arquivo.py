@@ -71,6 +71,8 @@ def criar_contadores_geograficos() -> dict:
             "uf_compativel": 0, "uf_divergente": 0,
             "codigos_nao_mapeados": Counter(),
             "valores_uf_nao_reconhecidos": Counter(),
+            "pares_codigo_uf_divergentes": Counter(),
+            "codigos_municipais_inexistentes_ibge": 0,
         }
         for eixo in ("residencia", "notificacao")
     }
@@ -86,6 +88,8 @@ def acumular_geografia(\n    contadores: dict, eixo: str, codigo_raw: object, uf
         item["codigo_invalido"] += 1
         return
     item["codigo_valido"] += 1
+    if codigos_ibge is not None and codigo not in codigos_ibge:
+        item["codigos_municipais_inexistentes_ibge"] += 1
     if codigo not in MUNICIPIOS:
         item["codigos_nao_mapeados"][codigo] += 1
     if uf_raw in (None, ""):
@@ -100,6 +104,7 @@ def acumular_geografia(\n    contadores: dict, eixo: str, codigo_raw: object, uf
         item["uf_compativel"] += 1
     else:
         item["uf_divergente"] += 1
+        item["pares_codigo_uf_divergentes"][(codigo, uf)] += 1
 
 
 def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notificacao: bool) -> dict:
@@ -113,6 +118,7 @@ def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notifi
             chave: item[chave] for chave in (
                 "ausente", "codigo_invalido", "codigo_valido", "uf_ausente",
                 "uf_invalida_ou_nao_reconhecida", "uf_compativel", "uf_divergente",
+                "codigos_municipais_inexistentes_ibge",
             )
         }
         saida["por_dimensao"][eixo]["codigos_validos_nao_mapeados_top_30"] = [
@@ -199,6 +205,7 @@ def carregar_codigos_municipais_ibge(timeout: int = 60) -> set[str]:\n    """Obt
     if not 2000 <= ano <= 2026:
         raise ValueError("Ano fora do intervalo esperado (2000–2026).")
     url = URL_TEMPLATE.format(ano2=str(ano)[-2:])
+    codigos_ibge = carregar_codigos_municipais_ibge()
     digest = hashlib.sha256()
     with tempfile.TemporaryDirectory(prefix="sinan-validacao-") as tmp:
         archive = Path(tmp) / "sinan.zip"

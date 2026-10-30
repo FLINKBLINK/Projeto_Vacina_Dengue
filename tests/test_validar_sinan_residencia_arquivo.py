@@ -82,7 +82,7 @@ def test_audita_existencia_codigo_no_cadastro_ibge():
     csv_text = (
         "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF\n"
         "354340;354020;35;35\n"
-        "999999;999999;99;99\n"
+        "999999;999999;35;35\n"
     )
     result = analisar_csv(io.StringIO(csv_text), codigos_ibge={"354340", "354020"})
     residencia = result["auditoria_geografica"]["por_dimensao"]["residencia"]
@@ -90,5 +90,5 @@ def test_audita_existencia_codigo_no_cadastro_ibge():
     assert residencia["codigos_municipais_inexistentes_ibge"] == 1
     assert notificacao["codigos_municipais_inexistentes_ibge"] == 1
     assert residencia["divergencias_codigo_uf_top_50"] == [
-        {"codigo_municipal": "999999", "uf_informada": "99", "registros": 1}
+        {"codigo_municipal": "999999", "uf_informada": "35", "registros": 1}
     ]

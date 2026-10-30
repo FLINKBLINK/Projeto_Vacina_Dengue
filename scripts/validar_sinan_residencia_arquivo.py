@@ -32,6 +32,7 @@ MUNICIPIOS = {
     "355170": "Sertãozinho",
 }
 URL_TEMPLATE = "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/SINAN/Dengue/csv/DENGBR{ano2}.csv.zip"
+IBGE_MUNICIPIOS_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
 
 
 def normalizar_codigo(value: object) -> str | None:
@@ -59,7 +60,7 @@ def normalizar_uf(value: object) -> str | None:
     raw = str(value).strip().upper()
     if raw in UF_SIGLAS:
         return UF_SIGLAS[raw]
-    digits = re.sub(r"\\D", "", raw)
+    digits = re.sub(r"\D", "", raw)
     return digits if len(digits) == 2 and digits in UF_IBGE else None
 
 
@@ -71,12 +72,17 @@ def criar_contadores_geograficos() -> dict:
             "uf_compativel": 0, "uf_divergente": 0,
             "codigos_nao_mapeados": Counter(),
             "valores_uf_nao_reconhecidos": Counter(),
+            "pares_codigo_uf_divergentes": Counter(),
+            "codigos_municipais_inexistentes_ibge": 0,
         }
         for eixo in ("residencia", "notificacao")
     }
 
 
-def acumular_geografia(contadores: dict, eixo: str, codigo_raw: object, uf_raw: object) -> None:
+def acumular_geografia(
+    contadores: dict, eixo: str, codigo_raw: object, uf_raw: object,
+    codigos_ibge: set[str] | None = None,
+) -> None:
     item = contadores[eixo]
     if codigo_raw in (None, ""):
         item["ausente"] += 1
@@ -86,6 +92,8 @@ def acumular_geografia(contadores: dict, eixo: str, codigo_raw: object, uf_raw: 
         item["codigo_invalido"] += 1
         return
     item["codigo_valido"] += 1
+    if codigos_ibge is not None and codigo not in codigos_ibge:
+        item["codigos_municipais_inexistentes_ibge"] += 1
     if codigo not in MUNICIPIOS:
         item["codigos_nao_mapeados"][codigo] += 1
     if uf_raw in (None, ""):
@@ -100,6 +108,7 @@ def acumular_geografia(contadores: dict, eixo: str, codigo_raw: object, uf_raw: 
         item["uf_compativel"] += 1
     else:
         item["uf_divergente"] += 1
+        item["pares_codigo_uf_divergentes"][(codigo, uf)] += 1
 
 
 def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notificacao: bool) -> dict:
@@ -113,11 +122,16 @@ def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notifi
             chave: item[chave] for chave in (
                 "ausente", "codigo_invalido", "codigo_valido", "uf_ausente",
                 "uf_invalida_ou_nao_reconhecida", "uf_compativel", "uf_divergente",
+                "codigos_municipais_inexistentes_ibge",
             )
         }
         saida["por_dimensao"][eixo]["codigos_validos_nao_mapeados_top_30"] = [
             {"codigo": codigo, "registros": quantidade}
             for codigo, quantidade in item["codigos_nao_mapeados"].most_common(30)
+        ]
+        saida["por_dimensao"][eixo]["divergencias_codigo_uf_top_50"] = [
+            {"codigo_municipal": codigo, "uf_informada": uf, "registros": quantidade}
+            for (codigo, uf), quantidade in item["pares_codigo_uf_divergentes"].most_common(50)
         ]
         saida["por_dimensao"][eixo]["valores_uf_nao_reconhecidos_top_20"] = [
             {"valor": valor, "registros": quantidade}
@@ -126,7 +140,7 @@ def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notifi
     return saida
 
 
-def analisar_csv(stream: TextIO) -> dict:
+def analisar_csv(stream: TextIO, codigos_ibge: set[str] | None = None) -> dict:
     sample = stream.read(8192)
     stream.seek(0)
     try:
@@ -169,8 +183,8 @@ def analisar_csv(stream: TextIO) -> dict:
         not_code = normalizar_codigo(not_raw)
         res_uf_raw = row.get(residence_uf_col) if residence_uf_col else None
         not_uf_raw = row.get(notifier_uf_col) if notifier_uf_col else None
-        acumular_geografia(geo, "residencia", res_raw, res_uf_raw)
-        acumular_geografia(geo, "notificacao", not_raw, not_uf_raw)
+        acumular_geografia(geo, "residencia", res_raw, res_uf_raw, codigos_ibge=codigos_ibge)
+        acumular_geografia(geo, "notificacao", not_raw, not_uf_raw, codigos_ibge=codigos_ibge)
         if res_code is None:
             missing_residence += 1
         elif res_code in MUNICIPIOS:
@@ -195,10 +209,23 @@ def analisar_csv(stream: TextIO) -> dict:
     }
 
 
+def carregar_codigos_municipais_ibge(timeout: int = 60) -> set[str]:
+    """Obtém a relação oficial de municípios diretamente da API de Localidades do IBGE."""
+    response = requests.get(IBGE_MUNICIPIOS_URL, timeout=(15, timeout), headers={"User-Agent": "Projeto-Vacina-Dengue/1.0"})
+    response.raise_for_status()
+    payload = response.json()
+    codigos = {normalizar_codigo(item.get("id")) for item in payload if isinstance(item, dict)}
+    codigos.discard(None)
+    if len(codigos) < 5000:
+        raise ValueError(f"Relação municipal do IBGE incompleta ou inesperada: {len(codigos)} códigos.")
+    return codigos
+
+
 def executar(ano: int, timeout: int = 180) -> dict:
     if not 2000 <= ano <= 2026:
         raise ValueError("Ano fora do intervalo esperado (2000–2026).")
     url = URL_TEMPLATE.format(ano2=str(ano)[-2:])
+    codigos_ibge = carregar_codigos_municipais_ibge()
     digest = hashlib.sha256()
     with tempfile.TemporaryDirectory(prefix="sinan-validacao-") as tmp:
         archive = Path(tmp) / "sinan.zip"
@@ -216,19 +243,23 @@ def executar(ano: int, timeout: int = 180) -> dict:
             with zf.open(members[0]) as raw:
                 # Microdados do SINAN podem usar codificação Windows-1252/Latin-1.
                 text = io.TextIOWrapper(raw, encoding="latin-1", newline="")
-                summary = analisar_csv(text)
+                summary = analisar_csv(text, codigos_ibge=codigos_ibge)
     return {
         "fonte": "Portal de Dados Abertos do SUS — SINAN/Dengue",
         "ano": ano,
         "url_arquivo": url,
         "sha256_arquivo_zip": digest.hexdigest(),
         "arquivo_processado": members[0].filename,
-        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNICIP.",
+        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNICIP; códigos municipais confrontados com a API oficial de Localidades do IBGE.",
+        "fonte_codigos_municipais": IBGE_MUNICIPIOS_URL,
+        "quantidade_codigos_municipais_ibge": len(codigos_ibge),
         "dados_pessoais": "Nenhuma linha individual é impressa ou persistida; só agregados e hash do arquivo.",
         **summary,
         "alertas": [
             "Contagens são registros/notificações, não automaticamente casos confirmados.",
             "Hash exato identifica linhas integralmente idênticas; não é identificador epidemiológico de duplicidade.",
+            "A validação IBGE confirma existência do código municipal na lista consultada; não valida endereço ou residência individual.",
+            "Divergências UF/código são agregadas por par código-UF e devem ser investigadas, não corrigidas automaticamente.",
             "Arquivo anual pode divergir de painéis atualizados; guardar a data/hash da extração para reprodutibilidade.",
         ],
     }

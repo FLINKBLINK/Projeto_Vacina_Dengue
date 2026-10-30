@@ -34,3 +34,29 @@ O JSON também contém o objeto `auditoria_geografica`, calculado sobre todas as
 A regra de consistência verifica apenas se os dois primeiros dígitos do código municipal correspondem à UF informada. Ela não confirma a existência do município, a correção do endereço ou a qualidade epidemiológica do registro. Códigos não mapeados são esperados porque o arquivo é nacional e o projeto acompanha somente dez municípios.
 
 Se as colunas `SG_UF` ou `SG_UF_NOT` não existirem no arquivo, o relatório sinaliza isso e não calcula compatibilidade para a dimensão correspondente. Divergências são indicadores para investigação, não autorização para corrigir ou excluir registros.
+
+
+## Validação municipal contra o IBGE e detalhamento das divergências
+
+A cada execução, o script consulta a API oficial de Localidades do IBGE
+(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios`) e normaliza
+os códigos de sete dígitos para o prefixo de seis dígitos utilizado no SINAN.
+A execução falha se a resposta tiver menos de 5.000 códigos, evitando publicar
+uma auditoria baseada em uma lista manifestamente incompleta.
+
+O objeto `auditoria_geografica.por_dimensao` passa a apresentar
+`codigos_municipais_inexistentes_ibge`, que conta códigos em formato válido
+que não aparecem no cadastro consultado. Essa contagem é independente da lista
+dos dez municípios do estudo: um município fora do recorte pode ser perfeitamente
+válido no IBGE.
+
+O campo `divergencias_codigo_uf_top_50` mostra os pares agregados de código
+municipal e UF informada com maior frequência. Não contém linhas individuais.
+A normalização da UF remove caracteres não numéricos antes de validar códigos
+de dois dígitos e também aceita siglas estaduais.
+
+As contagens de UF são condicionadas à existência de código municipal válido:
+linhas com código ausente ou em formato inválido não entram nos totais de
+compatibilidade/divergência de UF. A lista do IBGE confirma existência do código,
+mas não comprova que o município ou endereço informado corresponde à residência
+real da pessoa. Nenhuma divergência é corrigida ou excluída automaticamente.

@@ -74,4 +74,21 @@ def test_normaliza_uf_por_codigo_ou_sigla():
     assert normalizar_uf("35") == "35"
     assert normalizar_uf("SP") == "35"
     assert normalizar_uf(" 35 ") == "35"
+    assert normalizar_uf("3 5") == "35"
     assert normalizar_uf("XX") is None
+
+
+def test_audita_existencia_codigo_no_cadastro_ibge():
+    csv_text = (
+        "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF\\n"
+        "354340;354020;35;35\\n"
+        "999999;999999;99;99\\n"
+    )
+    result = analisar_csv(io.StringIO(csv_text), codigos_ibge={"354340", "354020"})
+    residencia = result["auditoria_geografica"]["por_dimensao"]["residencia"]
+    notificacao = result["auditoria_geografica"]["por_dimensao"]["notificacao"]
+    assert residencia["codigos_municipais_inexistentes_ibge"] == 1
+    assert notificacao["codigos_municipais_inexistentes_ibge"] == 1
+    assert residencia["divergencias_codigo_uf_top_50"] == [
+        {"codigo_municipal": "999999", "uf_informada": "99", "registros": 1}
+    ]

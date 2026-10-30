@@ -66,6 +66,9 @@ def analisar_csv(stream: TextIO) -> dict:
     rows = 0
     missing_residence = 0
     duplicates = 0
+    geo = criar_contadores_geograficos()
+    residence_uf_col = by_upper.get("SG_UF")
+    notifier_uf_col = by_upper.get("SG_UF_NOT")
     for row in reader:
         if not row or all(v in (None, "") for v in row.values()):
             continue
@@ -75,8 +78,14 @@ def analisar_csv(stream: TextIO) -> dict:
             duplicates += 1
         else:
             hashes.add(signature)
-        res_code = normalizar_codigo(row.get(residence_col))
-        not_code = normalizar_codigo(row.get(notifier_col))
+        res_raw = row.get(residence_col)
+        not_raw = row.get(notifier_col)
+        res_code = normalizar_codigo(res_raw)
+        not_code = normalizar_codigo(not_raw)
+        res_uf_raw = row.get(residence_uf_col) if residence_uf_col else None
+        not_uf_raw = row.get(notifier_uf_col) if notifier_uf_col else None
+        acumular_geografia(geo, "residencia", res_raw, res_uf_raw)
+        acumular_geografia(geo, "notificacao", not_raw, not_uf_raw)
         if res_code is None:
             missing_residence += 1
         elif res_code in MUNICIPIOS:
@@ -93,6 +102,7 @@ def analisar_csv(stream: TextIO) -> dict:
         "registros_sem_codigo_residencia": missing_residence,
         "por_municipio_residencia": {name: residence[code] for code, name in MUNICIPIOS.items()},
         "por_municipio_notificador": {name: notifier[code] for code, name in MUNICIPIOS.items()},
+        "auditoria_geografica": finalizar_geografia(geo, bool(residence_uf_col), bool(notifier_uf_col)),
         "cruzamento_notificador_residencia_alvo": [
             {"notificador": MUNICIPIOS[n], "residencia": MUNICIPIOS[r], "registros": count}
             for (n, r), count in sorted(cross.items())

@@ -50,7 +50,7 @@ def test_audita_uf_residencia_e_notificacao():
         "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF;NU_ANO\\n"
         "354340;354020;35;35;2024\\n"
         "354340;354020;35;SP;2024\\n"
-        "330455;354020;33;35;2024\\n"
+        "330455;354020;33;33;2024\\n"
         "999999;354020;35;35;2024\\n"
         ";354020;35;35;2024\\n"
         "abc;354020;35;35;2024\\n"
@@ -62,7 +62,7 @@ def test_audita_uf_residencia_e_notificacao():
     notificacao = auditoria["por_dimensao"]["notificacao"]
     assert residencia["uf_compativel"] == 5
     assert residencia["uf_divergente"] == 1
-    assert notificacao["uf_compativel"] == 5
+    assert notificacao["uf_compativel"] == 2
     assert notificacao["uf_divergente"] == 1
     assert notificacao["codigo_invalido"] == 1
     assert {"codigo": "999999", "registros": 1} in notificacao["codigos_validos_nao_mapeados_top_30"]

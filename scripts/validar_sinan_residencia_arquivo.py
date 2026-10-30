@@ -79,7 +79,10 @@ def criar_contadores_geograficos() -> dict:
     }
 
 
-def acumular_geografia(\n    contadores: dict, eixo: str, codigo_raw: object, uf_raw: object,\n    codigos_ibge: set[str] | None = None,\n) -> None:
+def acumular_geografia(
+    contadores: dict, eixo: str, codigo_raw: object, uf_raw: object,
+    codigos_ibge: set[str] | None = None,
+) -> None:
     item = contadores[eixo]
     if codigo_raw in (None, ""):
         item["ausente"] += 1
@@ -126,7 +129,11 @@ def finalizar_geografia(contadores: dict, tem_uf_residencia: bool, tem_uf_notifi
             {"codigo": codigo, "registros": quantidade}
             for codigo, quantidade in item["codigos_nao_mapeados"].most_common(30)
         ]
-        saida["por_dimensao"][eixo]["divergencias_codigo_uf_top_50"] = [\n            {"codigo_municipal": codigo, "uf_informada": uf, "registros": quantidade}\n            for (codigo, uf), quantidade in item["pares_codigo_uf_divergentes"].most_common(50)\n        ]\n        saida["por_dimensao"][eixo]["valores_uf_nao_reconhecidos_top_20"] = [
+        saida["por_dimensao"][eixo]["divergencias_codigo_uf_top_50"] = [
+            {"codigo_municipal": codigo, "uf_informada": uf, "registros": quantidade}
+            for (codigo, uf), quantidade in item["pares_codigo_uf_divergentes"].most_common(50)
+        ]
+        saida["por_dimensao"][eixo]["valores_uf_nao_reconhecidos_top_20"] = [
             {"valor": valor, "registros": quantidade}
             for valor, quantidade in item["valores_uf_nao_reconhecidos"].most_common(20)
         ]
@@ -202,7 +209,19 @@ def analisar_csv(stream: TextIO, codigos_ibge: set[str] | None = None) -> dict:
     }
 
 
-def carregar_codigos_municipais_ibge(timeout: int = 60) -> set[str]:\n    """Obtém a relação oficial de municípios diretamente da API de Localidades do IBGE."""\n    response = requests.get(IBGE_MUNICIPIOS_URL, timeout=(15, timeout), headers={"User-Agent": "Projeto-Vacina-Dengue/1.0"})\n    response.raise_for_status()\n    payload = response.json()\n    codigos = {normalizar_codigo(item.get("id")) for item in payload if isinstance(item, dict)}\n    codigos.discard(None)\n    if len(codigos) < 5000:\n        raise ValueError(f"Relação municipal do IBGE incompleta ou inesperada: {len(codigos)} códigos.")\n    return codigos\n\n\ndef executar(ano: int, timeout: int = 180) -> dict:
+def carregar_codigos_municipais_ibge(timeout: int = 60) -> set[str]:
+    """Obtém a relação oficial de municípios diretamente da API de Localidades do IBGE."""
+    response = requests.get(IBGE_MUNICIPIOS_URL, timeout=(15, timeout), headers={"User-Agent": "Projeto-Vacina-Dengue/1.0"})
+    response.raise_for_status()
+    payload = response.json()
+    codigos = {normalizar_codigo(item.get("id")) for item in payload if isinstance(item, dict)}
+    codigos.discard(None)
+    if len(codigos) < 5000:
+        raise ValueError(f"Relação municipal do IBGE incompleta ou inesperada: {len(codigos)} códigos.")
+    return codigos
+
+
+def executar(ano: int, timeout: int = 180) -> dict:
     if not 2000 <= ano <= 2026:
         raise ValueError("Ano fora do intervalo esperado (2000–2026).")
     url = URL_TEMPLATE.format(ano2=str(ano)[-2:])
@@ -231,12 +250,16 @@ def carregar_codigos_municipais_ibge(timeout: int = 60) -> set[str]:\n    """Obt
         "url_arquivo": url,
         "sha256_arquivo_zip": digest.hexdigest(),
         "arquivo_processado": members[0].filename,
-        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNICIP; códigos municipais confrontados com a API oficial de Localidades do IBGE.",\n        "fonte_codigos_municipais": IBGE_MUNICIPIOS_URL,\n        "quantidade_codigos_municipais_ibge": len(codigos_ibge),
+        "metodo": "Arquivo anual nacional CSV/ZIP; contagem local por ID_MN_RESI e comparação por ID_MUNICIP; códigos municipais confrontados com a API oficial de Localidades do IBGE.",
+        "fonte_codigos_municipais": IBGE_MUNICIPIOS_URL,
+        "quantidade_codigos_municipais_ibge": len(codigos_ibge),
         "dados_pessoais": "Nenhuma linha individual é impressa ou persistida; só agregados e hash do arquivo.",
         **summary,
         "alertas": [
             "Contagens são registros/notificações, não automaticamente casos confirmados.",
-            "Hash exato identifica linhas integralmente idênticas; não é identificador epidemiológico de duplicidade.",\n            "A validação IBGE confirma existência do código municipal na lista consultada; não valida endereço ou residência individual.",\n            "Divergências UF/código são agregadas por par código-UF e devem ser investigadas, não corrigidas automaticamente.",
+            "Hash exato identifica linhas integralmente idênticas; não é identificador epidemiológico de duplicidade.",
+            "A validação IBGE confirma existência do código municipal na lista consultada; não valida endereço ou residência individual.",
+            "Divergências UF/código são agregadas por par código-UF e devem ser investigadas, não corrigidas automaticamente.",
             "Arquivo anual pode divergir de painéis atualizados; guardar a data/hash da extração para reprodutibilidade.",
         ],
     }

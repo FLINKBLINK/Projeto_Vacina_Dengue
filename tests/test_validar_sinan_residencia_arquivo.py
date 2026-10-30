@@ -47,13 +47,13 @@ def test_guatapara_nao_confunde_codigo_de_guarulhos():
 
 def test_audita_uf_residencia_e_notificacao():
     csv_text = (
-        "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF;NU_ANO\\n"
-        "354340;354020;35;35;2024\\n"
-        "354340;354020;35;SP;2024\\n"
-        "330455;354020;33;33;2024\\n"
-        "999999;354020;35;35;2024\\n"
-        ";354020;35;35;2024\\n"
-        "abc;354020;35;35;2024\\n"
+        "ID_MUNICIP;ID_MN_RESI;SG_UF_NOT;SG_UF;NU_ANO\n"
+        "354340;354020;35;35;2024\n"
+        "354340;354020;35;SP;2024\n"
+        "330455;354020;33;33;2024\n"
+        "999999;354020;35;35;2024\n"
+        ";354020;35;35;2024\n"
+        "abc;354020;35;35;2024\n"
     )
     result = analisar_csv(io.StringIO(csv_text))
     auditoria = result["auditoria_geografica"]

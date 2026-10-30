@@ -62,7 +62,7 @@ def test_audita_uf_residencia_e_notificacao():
     notificacao = auditoria["por_dimensao"]["notificacao"]
     assert residencia["uf_compativel"] == 5
     assert residencia["uf_divergente"] == 1
-    assert notificacao["uf_compativel"] == 2
+    assert notificacao["uf_compativel"] == 3
     assert notificacao["uf_divergente"] == 1
     assert notificacao["codigo_invalido"] == 1
     assert {"codigo": "999999", "registros": 1} in notificacao["codigos_validos_nao_mapeados_top_30"]

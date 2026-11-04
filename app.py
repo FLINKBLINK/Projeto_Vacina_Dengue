@@ -254,7 +254,8 @@ with st.sidebar:
     st.caption(f"SQLite local • {DB_PATH.name}")
 pop=pop0[pop0.municipio.isin(selected_munis)].copy()
 sinan=sinan_base[sinan_base.municipio.isin(selected_munis)].copy()
-sinan["data_notificacao"]=pd.to_datetime(sinan["data_notificacao"],errors="coerce")\nsinan["ano"]=sinan.data_notificacao.dt.year
+sinan["data_notificacao"]=pd.to_datetime(sinan["data_notificacao"],errors="coerce")
+sinan["ano"]=sinan.data_notificacao.dt.year
 sinan=sinan[sinan.ano.isin(selected_years)|sinan.data_notificacao.isna()]
 vac=vac0[vac0.municipio.isin(selected_munis)&vac0.ano.isin(selected_years)].copy()
 sex=data["sexo"][data["sexo"].municipio.isin(selected_munis)&data["sexo"].ano.isin(selected_years)]

@@ -127,7 +127,7 @@ def consultar_casos_oficiais(db_path=None) -> pd.DataFrame:
         colunas = {
             row[1] for row in conexao.execute("PRAGMA table_info(oficiais_registros)")
         }
-        if not {"fonte", "municipio", "ano_referencia", "registro_json"}.issubset(colunas):
+        if not {"fonte", "chave_registro", "municipio", "ano_referencia", "registro_json"}.issubset(colunas):
             return pd.DataFrame(columns=colunas_saida)
         registros = pd.read_sql_query(
             """SELECT municipio, ano_referencia, registro_json

@@ -7,7 +7,7 @@ from src.analytics.analises_artigo import construir_analises_artigo
 from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes, localizar_arquivo
 from src.database.carga import garantir_banco_atualizado
 from src.database.conexao import DB_PATH
-from src.database.consultas_db import (consultar_casos, consultar_contagens_oficiais, consultar_execucoes_oficiais, consultar_metadados, consultar_populacao, consultar_vacinacao_categoria, consultar_vacinacao_mensal)
+from src.database.consultas_db import (consultar_casos, consultar_casos_oficiais, consultar_contagens_oficiais, consultar_execucoes_oficiais, consultar_metadados, consultar_populacao, consultar_vacinacao_categoria, consultar_vacinacao_mensal)
 
 st.set_page_config(page_title="Dengue em dados | Ribeirão Preto", page_icon="🦟", layout="wide")
 st.markdown("""
@@ -68,7 +68,7 @@ def fmt_date(x):
 
 @st.cache_data(show_spinner=False)
 def load(db, signature):
-    return {"pop": consultar_populacao(db), "sinan": consultar_casos(db), "vac": consultar_vacinacao_mensal(db), "sexo": consultar_vacinacao_categoria("sexo", db), "idade": consultar_vacinacao_categoria("faixaetaria", db), "meta": consultar_metadados(db), "exec": consultar_execucoes_oficiais(db), "official": consultar_contagens_oficiais(db)}
+    return {"pop": consultar_populacao(db), "sinan": consultar_casos(db), "sinan_oficial": consultar_casos_oficiais(db), "vac": consultar_vacinacao_mensal(db), "sexo": consultar_vacinacao_categoria("sexo", db), "idade": consultar_vacinacao_categoria("faixaetaria", db), "meta": consultar_metadados(db), "exec": consultar_execucoes_oficiais(db), "official": consultar_contagens_oficiais(db)}
 
 def plot(fig, key):
     fig.update_layout(template="plotly_white", margin={"l": 10, "r": 10, "t": 55, "b": 10})
@@ -219,13 +219,30 @@ try:
 except Exception as exc: st.error(f"Não foi possível preparar ou consultar o SQLite: {exc}"); st.stop()
 if carga: st.toast("SQLite atualizado a partir das planilhas locais.",icon="✅")
 pop0,sinan0,vac0=data["pop"],data["sinan"],data["vac"]
+sinan_oficial=data["sinan_oficial"]
 munis=sorted(pop0.municipio.dropna().unique()); default=[m for m in MUNICIPIOS_ANALISE if m in munis] or munis
-years=sorted(set(sinan0.data_notificacao.dropna().dt.year.astype(int))|set(vac0.ano.dropna().astype(int)))
 with st.sidebar:
-    st.header("Navegação"); page=st.radio("Seção",["Visão geral","Vacinação","Epidemiologia / SINAN","Análise estatística","Qualidade dos dados","Fontes e atualização"],label_visibility="collapsed")
-    st.divider(); st.subheader("Filtros"); selected_munis=st.multiselect("Municípios",munis,default=default); selected_years=st.multiselect("Ano",years,default=years); st.caption("SINAN usa ano da data de notificação; registros sem data permanecem visíveis para auditoria."); st.caption(f"SQLite local • {DB_PATH.name}")
+    st.header("Navegação")
+    page=st.radio("Seção",["Visão geral","Vacinação","Epidemiologia / SINAN","Análise estatística","Qualidade dos dados","Fontes e atualização"],label_visibility="collapsed")
+    st.divider()
+    st.subheader("Filtros")
+    fontes_sinan={"Planilhas locais":sinan0}
+    if not sinan_oficial.empty:
+        fontes_sinan["SINAN oficial • município de residência"]=sinan_oficial
+    fonte_sinan=st.selectbox("Fonte do SINAN",list(fontes_sinan))
+    sinan_base=fontes_sinan[fonte_sinan]
+    if fonte_sinan.startswith("SINAN oficial"):
+        anos_oficiais=sorted(pd.to_numeric(sinan_base.arquivo_ano,errors="coerce").dropna().astype(int).unique())
+        st.caption("Carga oficial disponível para os anos: "+", ".join(map(str,anos_oficiais))+". A seleção pode ser parcial; confira o histórico de execução em Fontes e atualização.")
+    years=sorted(set(pd.to_numeric(sinan_base.data_notificacao.dropna().dt.year,errors="coerce").dropna().astype(int))|set(vac0.ano.dropna().astype(int)))
+    selected_munis=st.multiselect("Municípios",munis,default=default)
+    selected_years=st.multiselect("Ano",years,default=years)
+    st.caption("SINAN usa ano da data de notificação; registros sem data permanecem visíveis para auditoria.")
+    st.caption(f"SQLite local • {DB_PATH.name}")
 pop=pop0[pop0.municipio.isin(selected_munis)].copy()
-sinan=sinan0[sinan0.municipio.isin(selected_munis)].copy(); sinan["ano"]=sinan.data_notificacao.dt.year; sinan=sinan[sinan.ano.isin(selected_years)|sinan.data_notificacao.isna()]
+sinan=sinan_base[sinan_base.municipio.isin(selected_munis)].copy()
+sinan["ano"]=sinan.data_notificacao.dt.year
+sinan=sinan[sinan.ano.isin(selected_years)|sinan.data_notificacao.isna()]
 vac=vac0[vac0.municipio.isin(selected_munis)&vac0.ano.isin(selected_years)].copy()
 sex=data["sexo"][data["sexo"].municipio.isin(selected_munis)&data["sexo"].ano.isin(selected_years)]
 age=data["idade"][data["idade"].municipio.isin(selected_munis)&data["idade"].ano.isin(selected_years)]
@@ -233,5 +250,5 @@ if page=="Visão geral": overview(pop,sinan,vac,data["meta"])
 elif page=="Vacinação": vaccination(vac,sex,age)
 elif page=="Epidemiologia / SINAN": epidemiology(sinan)
 elif page=="Análise estatística": statistics(vac0,sinan0,pop0)
-elif page=="Qualidade dos dados": quality(sinan0[sinan0.municipio.isin(selected_munis)],vac0[vac0.municipio.isin(selected_munis)])
+elif page=="Qualidade dos dados": quality(sinan[sinan.municipio.isin(selected_munis)],vac0[vac0.municipio.isin(selected_munis)])
 else: sources(data)

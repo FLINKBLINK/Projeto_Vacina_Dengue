@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import streamlit as st
 from src.analytics.analises_artigo import construir_analises_artigo
-from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_ausentes, localizar_arquivo
+from src.analytics.consultas import ARQUIVOS, MUNICIPIOS_ANALISE, arquivos_obrigatorios_ausentes, localizar_arquivo
 from src.database.carga import garantir_banco_atualizado
 from src.database.conexao import DB_PATH
 from src.database.consultas_db import (consultar_casos, consultar_casos_oficiais, consultar_contagens_oficiais, consultar_execucoes_oficiais, consultar_metadados, consultar_populacao, consultar_vacinacao_categoria, consultar_vacinacao_mensal)
@@ -224,7 +224,7 @@ def sources(data):
 
 st.title("Dengue em dados")
 st.caption("Projeto Vacina Dengue • Região de Ribeirão Preto (SP)")
-missing=arquivos_ausentes()
+missing=arquivos_obrigatorios_ausentes()
 if missing: st.error("Fontes obrigatórias ausentes; não são simulados resultados."); st.write(", ".join(missing)); st.stop()
 try:
     carga=garantir_banco_atualizado(); stat=DB_PATH.stat(); data=load(str(DB_PATH),(stat.st_mtime_ns,stat.st_size))
@@ -254,7 +254,7 @@ with st.sidebar:
     st.caption(f"SQLite local • {DB_PATH.name}")
 pop=pop0[pop0.municipio.isin(selected_munis)].copy()
 sinan=sinan_base[sinan_base.municipio.isin(selected_munis)].copy()
-sinan["ano"]=sinan.data_notificacao.dt.year
+sinan["data_notificacao"]=pd.to_datetime(sinan["data_notificacao"],errors="coerce")\nsinan["ano"]=sinan.data_notificacao.dt.year
 sinan=sinan[sinan.ano.isin(selected_years)|sinan.data_notificacao.isna()]
 vac=vac0[vac0.municipio.isin(selected_munis)&vac0.ano.isin(selected_years)].copy()
 sex=data["sexo"][data["sexo"].municipio.isin(selected_munis)&data["sexo"].ano.isin(selected_years)]

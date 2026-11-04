@@ -8,6 +8,19 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIRS = (ROOT / "data" / "raw", ROOT)
 ARQUIVOS = {"populacao": "IBGE_TRATADO.xlsx", "vacinacao": "DADOS_EXTRAIDOS.xlsx",
             "sinan_2023": "SINAN_2023.xlsx", "sinan_2024": "SINAN_2024.xlsx", "sinan_2025": "SINAN_2025.xlsx"}
+
+# População e vacinação seguem como fontes locais obrigatórias neste estágio.
+# As planilhas SINAN são opcionais quando a extração oficial já está no SQLite.
+ARQUIVOS_OBRIGATORIOS = ("populacao", "vacinacao")
+
+
+def arquivos_obrigatorios_ausentes() -> list[str]:
+    """Lista apenas os arquivos necessários para reconstruir as tabelas locais."""
+    return [
+        ARQUIVOS[chave]
+        for chave in ARQUIVOS_OBRIGATORIOS
+        if localizar_arquivo(ARQUIVOS[chave]) is None
+    ]
 MUNICIPIOS_ANALISE = ["Ribeirão Preto", "Sertãozinho", "Cravinhos", "Jardinópolis", "Pradópolis", "Pontal", "Serrana", "Guatapará", "Barrinha"]
 BRODOWSKI = "Brodowski"
 

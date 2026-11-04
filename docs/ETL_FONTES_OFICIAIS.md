@@ -63,7 +63,7 @@ python -m scripts.etl_fontes_oficiais --anos-sinan 2023,2024,2025 --somente-sina
 
 Reinicie ou atualize o dashboard. Em **Filtros → Fonte do SINAN**, selecione **SINAN oficial • arquivo anual por residência**. A opção só aparece quando há registros oficiais normalizáveis no banco. O painel informa os anos encontrados; uma carga com `--max-pages` é parcial e não deve ser interpretada como série completa.
 
-A opção oficial altera as páginas **Visão geral**, **Epidemiologia / SINAN** e **Qualidade dos dados**. A análise estatística continua usando a série histórica das planilhas até que suas janelas temporais e cobertura sejam revalidadas com a fonte oficial. A vacinação e a população também continuam usando as fontes locais neste estágio.
+A opção oficial altera as páginas **Visão geral**, **Epidemiologia / SINAN** e **Qualidade dos dados**. A análise estatística continua usando a série histórica das planilhas até que suas janelas temporais e cobertura sejam revalidadas com a fonte oficial. A vacinação e a população também continuam usando as fontes locais neste estágio. As planilhas SINAN locais podem ser omitidas quando a carga oficial estiver no banco; as planilhas de população e vacinação permanecem necessárias para reconstruir as tabelas locais.
 
 A extração anual oficial filtra localmente por município de residência. O campo `NU_IDADE_N` não é convertido automaticamente em idade em anos; a idade só é preenchida quando a origem contém um campo explícito `IDADE_ANOS`. Isso evita interpretar incorretamente a codificação de idade do SINAN.
 

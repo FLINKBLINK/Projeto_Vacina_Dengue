@@ -28,7 +28,7 @@ TABELAS_DADOS = (
 
 # Incrementar quando mudanças no ETL exigirem reconstruir o SQLite mesmo sem
 # alteração dos arquivos de origem.
-VERSAO_ETL = "2"
+VERSAO_ETL = "3"
 
 
 def assinatura_fontes() -> str:

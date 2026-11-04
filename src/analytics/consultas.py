@@ -89,7 +89,7 @@ def carregar_casos() -> pd.DataFrame:
         out["diverge_ano_arquivo"] = out["ano_data"].notna() & (out["ano_data"] != ano_arquivo)
         partes.append(out)
     if not partes:
-        return pd.DataFrame(columns=["municipio", "data_notificacao", "idade_anos", "sexo", "arquivo_ano", "ano_data", "diverge_ano_arquivo"])
+        return pd.DataFrame(columns=["municipio_original", "municipio", "data_notificacao", "idade_anos", "sexo", "arquivo_ano", "ano_data", "diverge_ano_arquivo"])
     return pd.concat(partes, ignore_index=True)
 
 def carregar_vacinacao() -> dict[str, pd.DataFrame]:

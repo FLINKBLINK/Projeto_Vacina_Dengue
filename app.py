@@ -81,7 +81,7 @@ def overview(pop, sinan, vac, meta):
     cols[0].metric("População selecionada",fmt(pop.populacao.sum(min_count=1)))
     cols[1].metric("Registros SINAN",fmt(len(sinan)))
     cols[2].metric("Doses registradas",fmt(vac.doses.sum(min_count=1)))
-    cols[3].metric("Municípios",fmt(len(set(pop.municipio)&set(sinan.municipio))))
+    cols[3].metric("Municípios selecionados",fmt(pop.municipio.nunique()))
     ds=sinan.data_notificacao.dropna()
     span=f"{ds.min():%d/%m/%Y} a {ds.max():%d/%m/%Y}" if not ds.empty else "sem datas válidas"
     years=sorted(vac.ano.dropna().astype(int).unique())
@@ -203,12 +203,24 @@ def sources(data):
     st.subheader("Fontes do dashboard"); st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
     meta=data["meta"]; st.metric("Última carga das planilhas",fmt_date(meta.get("carregado_em_utc")))
     st.caption(f"SQLite: {DB_PATH} • esquema: {meta.get('versao_esquema','—')} • assinatura ETL: {meta.get('assinatura_fontes','—')}")
-    st.subheader("ETL oficial independente")
-    st.write("Registros brutos oficiais não alimentam automaticamente os indicadores. O painel não inicia downloads.")
-    if data["exec"].empty: st.info("Este banco não tem histórico do ETL oficial. Cargas controladas são executadas por scripts/etl_fontes_oficiais.py.")
+    st.subheader("SINAN oficial disponível para análise")
+    sinan_oficial=data.get("sinan_oficial",pd.DataFrame())
+    if sinan_oficial.empty:
+        st.info("Ainda não há registros SINAN oficiais normalizados neste banco. Execute uma carga controlada do ETL oficial para disponibilizar essa opção.")
     else:
-        st.dataframe(data["exec"],use_container_width=True,hide_index=True); st.subheader("Registros brutos por fonte"); st.dataframe(data["official"],use_container_width=True,hide_index=True)
-    st.caption("Fontes: IBGE (população), SINAN (notificações) e planilhas locais (vacinação). PNI não é tratado como vacina dengue sem validação do imunobiológico.")
+        st.metric("Registros oficiais disponíveis",fmt(len(sinan_oficial)))
+        resumo_sinan=(sinan_oficial.groupby(["arquivo_ano","municipio"],as_index=False).size()
+                      .rename(columns={"arquivo_ano":"Ano do arquivo","municipio":"Município","size":"Registros"}))
+        st.dataframe(resumo_sinan,use_container_width=True,hide_index=True)
+        st.caption("Esses registros são carregados do arquivo anual oficial do SINAN e filtrados localmente por município de residência. Selecione essa fonte no filtro lateral para usá-la nas páginas de visão geral e epidemiologia.")
+    st.subheader("Histórico do ETL oficial")
+    if data["exec"].empty:
+        st.info("Este banco não tem histórico do ETL oficial. Cargas controladas são executadas por scripts/etl_fontes_oficiais.py.")
+    else:
+        st.dataframe(data["exec"],use_container_width=True,hide_index=True)
+        st.subheader("Registros brutos por fonte")
+        st.dataframe(data["official"],use_container_width=True,hide_index=True)
+    st.info("A população exibida ainda vem da fonte local validada. A API de população retorna grupos por sexo e idade que precisam ser agregados e validados antes de substituir essa série. A vacinação contra dengue continua usando as planilhas locais; o PNI geral não é tratado como vacina dengue sem validação do imunobiológico.")
 
 st.title("Dengue em dados")
 st.caption("Projeto Vacina Dengue • Região de Ribeirão Preto (SP)")
@@ -228,7 +240,7 @@ with st.sidebar:
     st.subheader("Filtros")
     fontes_sinan={"Planilhas locais":sinan0}
     if not sinan_oficial.empty:
-        fontes_sinan["SINAN oficial • município de residência"]=sinan_oficial
+        fontes_sinan["SINAN oficial • arquivo anual por residência"]=sinan_oficial
     fonte_sinan=st.selectbox("Fonte do SINAN",list(fontes_sinan))
     sinan_base=fontes_sinan[fonte_sinan]
     if fonte_sinan.startswith("SINAN oficial"):

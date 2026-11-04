@@ -131,3 +131,15 @@ def test_consulta_sinan_oficial_normaliza_registros_por_residencia(tmp_path):
     # NU_IDADE_N é codificado no SINAN e não pode ser tratado como idade em anos.
     assert pd.isna(resultado.loc[0, "idade_anos"])
     assert resultado.loc[1, "idade_anos"] == 31
+
+
+def test_carregar_casos_retorna_esquema_vazio_quando_planilhas_sinan_ausentes(monkeypatch):
+    from src.analytics import consultas
+
+    monkeypatch.setattr(consultas, "localizar_arquivo", lambda _nome: None)
+    resultado = consultas.carregar_casos()
+
+    assert resultado.empty
+    assert "municipio_original" in resultado.columns
+    assert "data_notificacao" in resultado.columns
+    assert "arquivo_ano" in resultado.columns

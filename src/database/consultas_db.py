@@ -61,3 +61,44 @@ def consultar_metadados(db_path=None) -> dict[str, str]:
     """Retorna metadados da última carga realizada."""
     df = _ler("SELECT chave, valor FROM metadados_carga", db_path=db_path)
     return dict(zip(df["chave"], df["valor"])) if not df.empty else {}
+
+
+def consultar_execucoes_oficiais(db_path=None) -> pd.DataFrame:
+    """Retorna o histórico do ETL oficial quando suas tabelas existem.
+
+    O pipeline oficial é opcional e independente da carga que alimenta o painel;
+    um banco sem essas tabelas retorna um quadro vazio.
+    """
+    with conectar(db_path or DB_PATH) as conexao:
+        existe = conexao.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='oficiais_execucoes'"
+        ).fetchone()
+        if existe is None:
+            return pd.DataFrame(columns=[
+                "fonte", "ano_referencia", "iniciado_em_utc", "finalizado_em_utc",
+                "paginas", "registros_recebidos", "registros_regiao", "status", "detalhe",
+            ])
+        colunas = {row[1] for row in conexao.execute("PRAGMA table_info(oficiais_execucoes)")}
+        tem_ano = "ano_referencia" in colunas
+        campos = "fonte, " + ("ano_referencia, " if tem_ano else "NULL AS ano_referencia, ") + (
+            "iniciado_em_utc, finalizado_em_utc, paginas, registros_recebidos, "
+            "registros_regiao, status, detalhe"
+        )
+        return pd.read_sql_query(
+            f"SELECT {campos} FROM oficiais_execucoes ORDER BY id DESC", conexao
+        )
+
+
+def consultar_contagens_oficiais(db_path=None) -> pd.DataFrame:
+    """Conta registros oficiais brutos por fonte e ano, se a tabela existir."""
+    with conectar(db_path or DB_PATH) as conexao:
+        existe = conexao.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='oficiais_registros'"
+        ).fetchone()
+        if existe is None:
+            return pd.DataFrame(columns=["fonte", "ano_referencia", "registros"])
+        return pd.read_sql_query(
+            "SELECT fonte, ano_referencia, COUNT(*) AS registros "
+            "FROM oficiais_registros GROUP BY fonte, ano_referencia ORDER BY fonte, ano_referencia",
+            conexao,
+        )

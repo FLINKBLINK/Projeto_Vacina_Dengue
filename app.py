@@ -243,7 +243,8 @@ with st.sidebar:
     fontes_sinan={"Planilhas locais":sinan0}
     if not sinan_oficial.empty:
         fontes_sinan["SINAN oficial • arquivo anual por residência"]=sinan_oficial
-    fonte_sinan=st.selectbox("Fonte do SINAN",list(fontes_sinan))
+    fonte_padrao=1 if sinan0.empty and not sinan_oficial.empty else 0
+    fonte_sinan=st.selectbox("Fonte do SINAN",list(fontes_sinan),index=fonte_padrao)
     sinan_base=fontes_sinan[fonte_sinan]
     if fonte_sinan.startswith("SINAN oficial"):
         anos_oficiais=sorted(pd.to_numeric(sinan_base.arquivo_ano,errors="coerce").dropna().astype(int).unique())

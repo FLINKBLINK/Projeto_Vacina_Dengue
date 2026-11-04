@@ -261,6 +261,9 @@ age=data["idade"][data["idade"].municipio.isin(selected_munis)&data["idade"].ano
 if page=="Visão geral": overview(pop,sinan,vac,data["meta"])
 elif page=="Vacinação": vaccination(vac,sex,age)
 elif page=="Epidemiologia / SINAN": epidemiology(sinan)
-elif page=="Análise estatística": statistics(vac0,sinan0,pop0)
+elif page=="Análise estatística":
+    if fonte_sinan.startswith("SINAN oficial"):
+        st.info("Esta página ainda utiliza a série histórica das planilhas locais. A fonte SINAN oficial selecionada é aplicada à Visão geral, Epidemiologia e Qualidade dos dados; a adaptação das correlações para a fonte oficial será feita após validação das janelas e da cobertura temporal.")
+    statistics(vac0,sinan0,pop0)
 elif page=="Qualidade dos dados": quality(sinan[sinan.municipio.isin(selected_munis)],vac0[vac0.municipio.isin(selected_munis)])
 else: sources(data)

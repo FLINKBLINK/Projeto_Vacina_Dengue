@@ -1,0 +1,58 @@
+name: Investigar códigos e campos da vacinação PNI
+
+on:
+  workflow_dispatch:
+    inputs:
+      anos:
+        description: "Anos separados por vírgula"
+        required: true
+        default: "2023,2024,2025,2026"
+        type: string
+      page_size:
+        description: "Registros por página (máximo 1000)"
+        required: true
+        default: "1000"
+        type: string
+      max_pages:
+        description: "Máximo de páginas por ano (amostra, não carga completa)"
+        required: true
+        default: "3"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  investigar-pni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências mínimas
+        run: python -m pip install "requests>=2.31,<3.0" "pytest>=8.0,<9.0"
+
+      - name: Testar investigação PNI
+        run: python -m pytest -q tests/test_investigar_pni_dengue.py
+
+      - name: Consultar amostras paginadas do PNI
+        run: >-
+          python scripts/investigar_pni_dengue.py
+          --anos "${{ inputs.anos }}"
+          --page-size "${{ inputs.page_size }}"
+          --max-pages "${{ inputs.max_pages }}"
+          --saida reports/pni/inspecao_pni_dengue.json
+
+      - name: Publicar relatório agregado
+        uses: actions/upload-artifact@v4
+        with:
+          name: investigacao-pni-dengue
+          path: reports/pni/inspecao_pni_dengue.json
+          if-no-files-found: error
+          retention-days: 30

@@ -10,7 +10,54 @@ from src.database.conexao import DB_PATH
 from src.database.consultas_db import (consultar_casos, consultar_contagens_oficiais, consultar_execucoes_oficiais, consultar_metadados, consultar_populacao, consultar_vacinacao_categoria, consultar_vacinacao_mensal)
 
 st.set_page_config(page_title="Dengue em dados | Ribeirão Preto", page_icon="🦟", layout="wide")
-st.markdown('<style>.stApp{background:#f7f9fc;color:#17324d}[data-testid="stSidebar"]{background:#edf3f8}[data-testid="stMetric"]{background:white;border:1px solid #dbe5ee;padding:14px 16px;border-radius:12px}h1,h2,h3{color:#17324d}</style>', unsafe_allow_html=True)
+st.markdown("""
+<style>
+:root {
+  --brand-navy: #17365d;
+  --brand-blue: #2463a6;
+  --brand-cyan: #dcecf8;
+  --surface: #ffffff;
+  --surface-soft: #f4f7fb;
+  --border-soft: #e2e8f0;
+  --text-main: #23364d;
+  --text-muted: #64748b;
+}
+.stApp { background: #f5f8fc; color: var(--text-main); }
+[data-testid="stHeader"] { background: rgba(245,248,252,.92); }
+[data-testid="stSidebar"] { background: #edf3f9; border-right: 1px solid var(--border-soft); }
+[data-testid="stSidebar"] > div:first-child { padding-top: 1.5rem; }
+.block-container { max-width: 1500px; padding-top: 2rem; padding-bottom: 3rem; }
+h1, h2, h3 { color: var(--brand-navy); letter-spacing: -.025em; }
+h1 { font-weight: 750; font-size: clamp(1.8rem, 3vw, 2.5rem); }
+h2 { font-weight: 700; margin-top: 1.3rem; }
+h3 { font-weight: 650; }
+p, [data-testid="stCaptionContainer"] { color: var(--text-muted); }
+[data-testid="stMetric"] {
+  background: var(--surface); border: 1px solid var(--border-soft);
+  padding: 1rem 1.15rem; border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(20,45,75,.035); min-height: 112px;
+}
+[data-testid="stMetricLabel"] { color: var(--text-muted); font-weight: 600; }
+[data-testid="stMetricValue"] { color: var(--brand-navy); font-weight: 750; }
+[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { gap: 1rem; }
+[data-testid="stPlotlyChart"], [data-testid="stDataFrame"] {
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: 14px; padding: .35rem;
+}
+[data-testid="stExpander"] {
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: 12px;
+}
+[data-testid="stAlert"] { border-radius: 12px; }
+.stButton > button, .stDownloadButton > button {
+  border-radius: 10px; border: 1px solid #cbd8e6; font-weight: 600;
+}
+hr { border-color: var(--border-soft); }
+@media (max-width: 900px) {
+  .block-container { padding: 1.1rem 1rem 2rem; }
+}
+</style>
+""", unsafe_allow_html=True)
 
 def fmt(x):
     return "—" if pd.isna(x) else f"{x:,.0f}".replace(",", ".")
@@ -40,18 +87,29 @@ def overview(pop, sinan, vac, meta):
     years=sorted(vac.ano.dropna().astype(int).unique())
     st.caption(f"Período SINAN: {span} • anos de vacinação: {', '.join(map(str,years)) or 'sem dados'} • última carga: {fmt_date(meta.get('carregado_em_utc'))}")
     a,b=st.columns(2)
-    if ds.empty: a.info("Sem datas válidas para a série SINAN.")
-    else:
-        m=sinan.dropna(subset=["data_notificacao"]).assign(mes=lambda d:d.data_notificacao.dt.to_period("M").dt.to_timestamp()).groupby("mes",as_index=False).size().rename(columns={"size":"registros"})
-        plot(px.line(m,x="mes",y="registros",markers=True,labels={"mes":"Mês","registros":"Registros"},title="Evolução mensal SINAN"),"ov-sinan")
-    if vac.empty: b.info("Sem doses mensais para exibir.")
-    else:
-        v=vac.groupby(["ano","mes_numero"],as_index=False).doses.sum(min_count=1)
-        v["data"]=pd.to_datetime(dict(year=v.ano,month=v.mes_numero,day=1),errors="coerce")
-        plot(px.line(v.dropna(subset=["data"]),x="data",y="doses",markers=True,labels={"data":"Mês","doses":"Doses"},title="Evolução mensal vacinação"),"ov-vac")
+    with a:
+        st.subheader("Evolução das notificações")
+        if ds.empty:
+            st.info("Sem datas válidas para a série SINAN.")
+        else:
+            m=sinan.dropna(subset=["data_notificacao"]).assign(mes=lambda d:d.data_notificacao.dt.to_period("M").dt.to_timestamp()).groupby("mes",as_index=False).size().rename(columns={"size":"registros"})
+            plot(px.line(m,x="mes",y="registros",markers=True,labels={"mes":"Mês","registros":"Registros"},title="Registros por mês"),"ov-sinan")
+    with b:
+        st.subheader("Evolução das doses")
+        if vac.empty:
+            st.info("Sem doses mensais para exibir.")
+        else:
+            v=vac.groupby(["ano","mes_numero"],as_index=False).doses.sum(min_count=1)
+            v["data"]=pd.to_datetime(dict(year=v.ano,month=v.mes_numero,day=1),errors="coerce")
+            plot(px.line(v.dropna(subset=["data"]),x="data",y="doses",markers=True,labels={"data":"Mês","doses":"Doses"},title="Doses por mês"),"ov-vac")
+    st.subheader("Comparação municipal")
     sm=sinan.groupby("municipio",as_index=False).size().rename(columns={"size":"registros"})
     vm=vac.groupby("municipio",as_index=False).doses.sum(min_count=1)
-    plot(px.bar(sm.merge(vm,on="municipio",how="outer"),x="municipio",y=["registros","doses"],barmode="group",labels={"municipio":"Município","value":"Quantidade","variable":"Indicador"},title="Comparação municipal"),"ov-mun")
+    left,right=st.columns(2)
+    with left:
+        plot(px.bar(sm.sort_values("registros",ascending=False),x="municipio",y="registros",labels={"municipio":"Município","registros":"Registros"},title="Registros SINAN por município"),"ov-mun-sinan")
+    with right:
+        plot(px.bar(vm.sort_values("doses",ascending=False),x="municipio",y="doses",labels={"municipio":"Município","doses":"Doses"},title="Doses registradas por município"),"ov-mun-vac")
     st.info("Doses não equivalem a pessoas únicas nem a cobertura oficial. Registros SINAN são notificações, não necessariamente casos confirmados.")
 
 def vaccination(vac, sex, age):
@@ -69,8 +127,10 @@ def vaccination(vac, sex, age):
     age = age[age.categoria.isin(selected_age)]
     annual=vac.groupby(["ano","municipio"],as_index=False).doses.sum(min_count=1)
     l,r=st.columns(2)
-    plot(px.bar(annual,x="municipio",y="doses",color="ano",barmode="group",labels={"municipio":"Município","doses":"Doses","ano":"Ano"},title="Doses por município e ano"),"vac-mun-ano")
-    plot(px.bar(vac.groupby("ano",as_index=False).doses.sum(min_count=1),x="ano",y="doses",labels={"ano":"Ano","doses":"Doses"},title="Doses por ano"),"vac-ano")
+    with l:
+        plot(px.bar(annual,x="municipio",y="doses",color="ano",barmode="group",labels={"municipio":"Município","doses":"Doses","ano":"Ano"},title="Doses por município e ano"),"vac-mun-ano")
+    with r:
+        plot(px.bar(vac.groupby("ano",as_index=False).doses.sum(min_count=1),x="ano",y="doses",labels={"ano":"Ano","doses":"Doses"},title="Doses por ano"),"vac-ano")
     rank=annual.groupby("municipio",as_index=False).doses.sum(min_count=1).sort_values("doses")
     plot(px.bar(rank,x="doses",y="municipio",orientation="h",labels={"doses":"Doses","municipio":"Município"},title="Ranking municipal"),"vac-rank")
     if not sex.empty:
@@ -92,7 +152,11 @@ def epidemiology(sinan):
     if not d.empty:
         d["mês"]=d.data_notificacao.dt.to_period("M").dt.to_timestamp(); m=d.groupby("mês",as_index=False).size().rename(columns={"size":"registros"})
         y=d.assign(ano=d.data_notificacao.dt.year).groupby("ano",as_index=False).size().rename(columns={"size":"registros"})
-        l,r=st.columns(2); plot(px.line(m,x="mês",y="registros",markers=True,labels={"mês":"Mês","registros":"Registros"},title="Evolução mensal"),"epi-mes"); plot(px.bar(y,x="ano",y="registros",labels={"ano":"Ano","registros":"Registros"},title="Registros por ano"),"epi-ano")
+        l,r=st.columns(2)
+        with l:
+            plot(px.line(m,x="mês",y="registros",markers=True,labels={"mês":"Mês","registros":"Registros"},title="Evolução mensal"),"epi-mes")
+        with r:
+            plot(px.bar(y,x="ano",y="registros",labels={"ano":"Ano","registros":"Registros"},title="Registros por ano"),"epi-ano")
     m=sinan.groupby("municipio",as_index=False).size().rename(columns={"size":"registros"}).sort_values("registros",ascending=False)
     plot(px.bar(m,x="municipio",y="registros",labels={"municipio":"Município","registros":"Registros"},title="Registros por município"),"epi-mun")
     div=sinan[sinan.diverge_ano_arquivo]

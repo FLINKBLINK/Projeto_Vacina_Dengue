@@ -1,6 +1,8 @@
 """Consultas de leitura usadas pelo dashboard para acessar o SQLite."""
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
 from src.database.conexao import DB_PATH, conectar
@@ -102,3 +104,80 @@ def consultar_contagens_oficiais(db_path=None) -> pd.DataFrame:
             "FROM oficiais_registros GROUP BY fonte, ano_referencia ORDER BY fonte, ano_referencia",
             conexao,
         )
+
+
+def consultar_casos_oficiais(db_path=None) -> pd.DataFrame:
+    """Converte o SINAN oficial bruto em colunas analíticas usadas pelo dashboard.
+
+    A extração oficial é filtrada por município de residência. Os campos clínicos
+    não são inferidos: idade só é preenchida quando existe uma coluna explícita
+    em anos completos (IDADE_ANOS). NU_IDADE_N não é convertido sem validar seu
+    domínio/codificação.
+    """
+    colunas_saida = [
+        "municipio_original", "municipio", "data_notificacao", "idade_anos",
+        "sexo", "arquivo_ano", "ano_data", "diverge_ano_arquivo",
+    ]
+    with conectar(db_path or DB_PATH) as conexao:
+        existe = conexao.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='oficiais_registros'"
+        ).fetchone()
+        if existe is None:
+            return pd.DataFrame(columns=colunas_saida)
+        colunas = {
+            row[1] for row in conexao.execute("PRAGMA table_info(oficiais_registros)")
+        }
+        if not {"fonte", "municipio", "ano_referencia", "registro_json"}.issubset(colunas):
+            return pd.DataFrame(columns=colunas_saida)
+        registros = pd.read_sql_query(
+            """SELECT municipio, ano_referencia, registro_json
+               FROM oficiais_registros
+               WHERE fonte='sinan_dengue'
+               ORDER BY ano_referencia, chave_registro""",
+            conexao,
+        )
+
+    if registros.empty:
+        return pd.DataFrame(columns=colunas_saida)
+
+    def obter(row: dict, *nomes):
+        por_nome = {str(k).strip().upper(): v for k, v in row.items()}
+        for nome in nomes:
+            valor = por_nome.get(nome.upper())
+            if valor not in (None, ""):
+                return valor
+        return None
+
+    saida = []
+    for registro in registros.itertuples(index=False):
+        try:
+            bruto = json.loads(registro.registro_json)
+        except (TypeError, ValueError):
+            continue
+        data_raw = obter(bruto, "DT_NOTIFIC", "DATA_NOTIFICACAO")
+        data = pd.to_datetime(data_raw, errors="coerce", dayfirst=True)
+        ano_arquivo = pd.to_numeric(registro.ano_referencia, errors="coerce")
+        ano_data = data.year if pd.notna(data) else pd.NA
+        municipio = str(registro.municipio or "").strip()
+        municipio_original = obter(bruto, "NM_MN_RESI", "NM_MUNICIP", "MUNICIPIO") or municipio
+        idade = obter(bruto, "IDADE_ANOS")
+        saida.append({
+            "municipio_original": str(municipio_original),
+            "municipio": municipio,
+            "data_notificacao": data,
+            "idade_anos": pd.to_numeric(idade, errors="coerce"),
+            "sexo": obter(bruto, "CS_SEXO", "SEXO"),
+            "arquivo_ano": int(ano_arquivo) if pd.notna(ano_arquivo) else pd.NA,
+            "ano_data": ano_data,
+            "diverge_ano_arquivo": bool(
+                pd.notna(ano_data) and pd.notna(ano_arquivo) and int(ano_data) != int(ano_arquivo)
+            ),
+        })
+
+    resultado = pd.DataFrame(saida, columns=colunas_saida)
+    if not resultado.empty:
+        resultado["data_notificacao"] = pd.to_datetime(
+            resultado["data_notificacao"], errors="coerce"
+        )
+        resultado["diverge_ano_arquivo"] = resultado["diverge_ano_arquivo"].astype(bool)
+    return resultado

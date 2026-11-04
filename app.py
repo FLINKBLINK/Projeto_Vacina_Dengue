@@ -24,8 +24,14 @@ st.markdown("""
 }
 .stApp { background: #f5f8fc; color: var(--text-main); }
 [data-testid="stHeader"] { background: rgba(245,248,252,.92); }
-[data-testid="stSidebar"] { background: #edf3f9; border-right: 1px solid var(--border-soft); }
+[data-testid="stSidebar"] { background: #e8eef6; color: #1e293b; border-right: 1px solid #d5dfeb; }
 [data-testid="stSidebar"] > div:first-child { padding-top: 1.5rem; }
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] p,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+  color: #17365d !important;
+}
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { color: #334e68 !important; font-weight: 600; }
 .block-container { max-width: 1500px; padding-top: 2rem; padding-bottom: 3rem; }
 h1, h2, h3 { color: var(--brand-navy); letter-spacing: -.025em; }
 h1 { font-weight: 750; font-size: clamp(1.8rem, 3vw, 2.5rem); }
@@ -130,7 +136,9 @@ def vaccination(vac, sex, age):
     with l:
         plot(px.bar(annual,x="municipio",y="doses",color="ano",barmode="group",labels={"municipio":"Município","doses":"Doses","ano":"Ano"},title="Doses por município e ano"),"vac-mun-ano")
     with r:
-        plot(px.bar(vac.groupby("ano",as_index=False).doses.sum(min_count=1),x="ano",y="doses",labels={"ano":"Ano","doses":"Doses"},title="Doses por ano"),"vac-ano")
+        annual_year=vac.groupby("ano",as_index=False).doses.sum(min_count=1)
+        annual_year["ano"]=pd.to_numeric(annual_year["ano"],errors="coerce").astype("Int64").astype(str)
+        plot(px.bar(annual_year,x="ano",y="doses",labels={"ano":"Ano","doses":"Doses"},title="Doses por ano"),"vac-ano")
     rank=annual.groupby("municipio",as_index=False).doses.sum(min_count=1).sort_values("doses")
     plot(px.bar(rank,x="doses",y="municipio",orientation="h",labels={"doses":"Doses","municipio":"Município"},title="Ranking municipal"),"vac-rank")
     if not sex.empty:
@@ -152,6 +160,7 @@ def epidemiology(sinan):
     if not d.empty:
         d["mês"]=d.data_notificacao.dt.to_period("M").dt.to_timestamp(); m=d.groupby("mês",as_index=False).size().rename(columns={"size":"registros"})
         y=d.assign(ano=d.data_notificacao.dt.year).groupby("ano",as_index=False).size().rename(columns={"size":"registros"})
+        y["ano"]=y["ano"].astype(int).astype(str)
         l,r=st.columns(2)
         with l:
             plot(px.line(m,x="mês",y="registros",markers=True,labels={"mês":"Mês","registros":"Registros"},title="Evolução mensal"),"epi-mes")

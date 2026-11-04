@@ -46,7 +46,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Se os arquivos necessários não estiverem nos locais esperados, o aplicativo informa quais fontes estão faltando.
+Para reconstruir a base local, `IBGE_TRATADO.xlsx` e `DADOS_EXTRAIDOS.xlsx` são necessários. As planilhas SINAN locais são opcionais quando a extração oficial já estiver carregada no mesmo SQLite; se nenhuma fonte SINAN estiver disponível, o dashboard avisa e mantém as demais páginas acessíveis.
 
 ## Dados de entrada e SQLite
 
@@ -56,7 +56,7 @@ Coloque os arquivos de origem em `data/raw/` (ou na raiz, conforme a resolução
 
 - `IBGE_TRATADO.xlsx` — população tratada;
 - `DADOS_EXTRAIDOS.xlsx` — registros de vacinação;
-- `SINAN_2023.xlsx`, `SINAN_2024.xlsx` e `SINAN_2025.xlsx` — extrações do SINAN usadas na análise.
+- `SINAN_2023.xlsx`, `SINAN_2024.xlsx` e `SINAN_2025.xlsx` — séries locais opcionais, usadas quando a fonte oficial não for selecionada.
 
 Obtenha e publique os arquivos de acordo com as condições de uso das fontes originais. Não inclua dados pessoais identificáveis em logs, relatórios públicos ou commits.
 

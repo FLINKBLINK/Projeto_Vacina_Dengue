@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.analytics.consultas import (
     ARQUIVOS,
+    ARQUIVOS_OBRIGATORIOS,
     carregar_casos,
     carregar_populacao,
     carregar_vacinacao,
@@ -27,17 +28,20 @@ TABELAS_DADOS = (
 
 # Incrementar quando mudanças no ETL exigirem reconstruir o SQLite mesmo sem
 # alteração dos arquivos de origem.
-VERSAO_ETL = "2"
+VERSAO_ETL = "3"
 
 
 def assinatura_fontes() -> str:
     """Cria assinatura a partir de nomes, tamanho e data de alteração das fontes."""
     itens = []
     itens.append(f"versao_etl:{VERSAO_ETL}")
-    for nome in ARQUIVOS.values():
+    for chave, nome in ARQUIVOS.items():
         caminho = localizar_arquivo(nome)
         if caminho is None:
-            raise FileNotFoundError(f"Fonte obrigatória ausente: {nome}")
+            if chave in ARQUIVOS_OBRIGATORIOS:
+                raise FileNotFoundError(f"Fonte obrigatória ausente: {nome}")
+            itens.append(f"{nome}:ausente")
+            continue
         stat = caminho.stat()
         itens.append(f"{nome}:{stat.st_size}:{stat.st_mtime_ns}")
     return hashlib.sha256("|".join(itens).encode("utf-8")).hexdigest()

@@ -51,6 +51,22 @@ DENGUE_DB_PATH=data/processed/etl_teste.db python -m scripts.etl_fontes_oficiais
 
 Para PNI nacional, use `--incluir-pni` somente após planejar o volume e validar o campo do imunobiológico. A API PNI é geral e não documenta filtros por município ou vacina no Swagger atual; portanto, a opção é desabilitada por padrão. **Não se deve somar todas as doses do PNI como doses contra dengue.**
 
+## Uso da série SINAN oficial no dashboard
+
+A tabela bruta `oficiais_registros` pode ser consultada pelo dashboard sem substituir as tabelas históricas das planilhas. A camada de consulta normaliza os campos necessários para a série temporal e mantém separados o ano do arquivo e o ano derivado de `DT_NOTIFIC`.
+
+Para disponibilizar a opção no filtro lateral do Streamlit, execute a carga completa dos anos desejados usando o mesmo banco configurado em `DENGUE_DB_PATH` (por padrão, `data/processed/dengue.db`):
+
+```bash
+python -m scripts.etl_fontes_oficiais --anos-sinan 2023,2024,2025 --somente-sinan
+```
+
+Reinicie ou atualize o dashboard. Em **Filtros → Fonte do SINAN**, selecione **SINAN oficial • arquivo anual por residência**. A opção só aparece quando há registros oficiais normalizáveis no banco. O painel informa os anos encontrados; uma carga com `--max-pages` é parcial e não deve ser interpretada como série completa.
+
+A opção oficial altera as páginas **Visão geral**, **Epidemiologia / SINAN** e **Qualidade dos dados**. A análise estatística continua usando a série histórica das planilhas até que suas janelas temporais e cobertura sejam revalidadas com a fonte oficial. A vacinação e a população também continuam usando as fontes locais neste estágio.
+
+A extração anual oficial filtra localmente por município de residência. O campo `NU_IDADE_N` não é convertido automaticamente em idade em anos; a idade só é preenchida quando a origem contém um campo explícito `IDADE_ANOS`. Isso evita interpretar incorretamente a codificação de idade do SINAN.
+
 ## Decisões e limites
 
 - A extração é filtrada para os dez municípios usados no projeto por código IBGE. No SINAN, o filtro oficial `id_municip` representa município da unidade notificadora segundo o Swagger, não necessariamente município de residência. A definição de geografia precisa ser conferida antes de comparar com população.

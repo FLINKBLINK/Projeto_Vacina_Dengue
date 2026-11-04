@@ -143,3 +143,32 @@ def test_carregar_casos_retorna_esquema_vazio_quando_planilhas_sinan_ausentes(mo
     assert "municipio_original" in resultado.columns
     assert "data_notificacao" in resultado.columns
     assert "arquivo_ano" in resultado.columns
+
+
+def test_assinatura_fontes_aceita_sinan_local_ausente(monkeypatch, tmp_path):
+    from src.database import carga
+
+    arquivos_locais = {}
+    for nome in ("IBGE_TRATADO.xlsx", "DADOS_EXTRAIDOS.xlsx"):
+        caminho = tmp_path / nome
+        caminho.write_bytes(b"fonte-de-teste")
+        arquivos_locais[nome] = caminho
+
+    monkeypatch.setattr(
+        carga,
+        "localizar_arquivo",
+        lambda nome: arquivos_locais.get(nome),
+    )
+    assert carga.assinatura_fontes()
+
+
+def test_assinatura_fontes_exige_populacao_e_vacinacao(monkeypatch):
+    from src.database import carga
+
+    monkeypatch.setattr(carga, "localizar_arquivo", lambda _nome: None)
+    try:
+        carga.assinatura_fontes()
+    except FileNotFoundError as exc:
+        assert "obrigatória" in str(exc)
+    else:
+        raise AssertionError("População e vacinação devem continuar obrigatórias")

@@ -246,7 +246,8 @@ with st.sidebar:
     if fonte_sinan.startswith("SINAN oficial"):
         anos_oficiais=sorted(pd.to_numeric(sinan_base.arquivo_ano,errors="coerce").dropna().astype(int).unique())
         st.caption("Carga oficial disponível para os anos: "+", ".join(map(str,anos_oficiais))+". A seleção pode ser parcial; confira o histórico de execução em Fontes e atualização.")
-    anos_sinan=pd.to_datetime(sinan_base["data_notificacao"],errors="coerce").dropna().dt.year.astype(int)\n    years=sorted(set(anos_sinan)|set(vac0.ano.dropna().astype(int)))
+    anos_sinan=pd.to_datetime(sinan_base["data_notificacao"],errors="coerce").dropna().dt.year.astype(int)
+    years=sorted(set(anos_sinan)|set(vac0.ano.dropna().astype(int)))
     selected_munis=st.multiselect("Municípios",munis,default=default)
     selected_years=st.multiselect("Ano",years,default=years)
     st.caption("SINAN usa ano da data de notificação; registros sem data permanecem visíveis para auditoria.")

@@ -232,6 +232,8 @@ except Exception as exc: st.error(f"Não foi possível preparar ou consultar o S
 if carga: st.toast("SQLite atualizado a partir das planilhas locais.",icon="✅")
 pop0,sinan0,vac0=data["pop"],data["sinan"],data["vac"]
 sinan_oficial=data["sinan_oficial"]
+if sinan0.empty and sinan_oficial.empty:
+    st.warning("Não há registros SINAN disponíveis no SQLite. A vacinação e a população continuam acessíveis; carregue uma fonte SINAN para habilitar a análise epidemiológica.")
 munis=sorted(pop0.municipio.dropna().unique()); default=[m for m in MUNICIPIOS_ANALISE if m in munis] or munis
 with st.sidebar:
     st.header("Navegação")
